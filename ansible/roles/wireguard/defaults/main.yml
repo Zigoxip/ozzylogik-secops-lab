@@ -1,0 +1,8 @@
+---
+lab_vpn_interface: wg0
+lab_vpn_prefixlen: 29
+lab_wireguard_port: 51820
+lab_wireguard_mtu: 1420
+lab_wireguard_keepalive: 25
+lab_reviewer_enabled: false
+lab_apt_package_versions: {}

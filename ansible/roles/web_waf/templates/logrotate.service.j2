@@ -1,0 +1,7 @@
+[Unit]
+Description=Rotate OZZYLOGIK WAF host logs and reopen Nginx/ModSecurity files
+After=docker.service
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate --state /var/lib/ozzylogik/waf-logrotate.status {{ lab_web_config_dir }}/logrotate.conf
+PrivateTmp=true

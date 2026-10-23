@@ -1,0 +1,19 @@
+---
+lab_admin_user: labadmin
+lab_vpn_interface: wg0
+lab_vpn_cidr: 10.77.42.0/29
+lab_vpn_prefixlen: 29
+lab_hub_wg_ip: 10.77.42.1
+lab_web_wg_ip: 10.77.42.2
+lab_admin_wg_ip: 10.77.42.3
+lab_reviewer_wg_ip: 10.77.42.4
+lab_wireguard_port: 51820
+lab_web_http_port: 80
+lab_loki_url: http://10.77.42.1:3100/loki/api/v1/push
+lab_loki_retention: 168h
+lab_reviewer_enabled: false
+lab_demo_http_enabled: false
+lab_access_rollback_seconds: 900
+lab_controller_secret_file: '{{ lookup("env", "HOME") }}/.local/share/ozzylogik/secrets.yml'
+lab_admin_public_key_file: '{{ lookup("env", "HOME") }}/.ssh/ozzylogik-lab.pub'
+lab_admin_public_key: '{{ lookup("ansible.builtin.file", lab_admin_public_key_file) }}'

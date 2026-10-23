@@ -1,0 +1,17 @@
+---
+- name: Cancel rollback only after fresh positive and negative access checks
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    lab_phase: commit
+    lab_lan_interface: '{{ ansible_facts.default_ipv4.interface }}'
+  pre_tasks:
+    - name: Require successful external acceptance checks
+      ansible.builtin.assert:
+        that:
+          - lab_access_checks_passed | default(false) | bool
+          - ansible_user == lab_admin_user
+        quiet: true
+  roles:
+    - firewall

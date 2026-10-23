@@ -1,0 +1,39 @@
+---
+- name: Prepare the provisioned dashboard directory
+  ansible.builtin.file:
+    path: /var/lib/grafana/dashboards/ozzylogik
+    state: directory
+    owner: root
+    group: grafana
+    mode: '0750'
+
+- name: Provision the Web and WAF dashboard
+  ansible.builtin.copy:
+    src: ozzylogik-web-waf.json
+    dest: /var/lib/grafana/dashboards/ozzylogik/ozzylogik-web-waf.json
+    owner: root
+    group: grafana
+    mode: '0640'
+    validate: /usr/bin/python3 -m json.tool %s
+  notify: Restart Grafana
+
+- name: Register the OZZYLOGIK dashboard provider
+  ansible.builtin.copy:
+    src: ozzylogik-dashboards.yml
+    dest: /etc/grafana/provisioning/dashboards/ozzylogik.yml
+    owner: root
+    group: grafana
+    mode: '0640'
+  notify: Restart Grafana
+
+- name: Load the dashboard provider before its health check
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for Grafana after provisioning the dashboard
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+  register: lab_dashboard_health
+  retries: 20
+  delay: 2
+  until: lab_dashboard_health.status == 200

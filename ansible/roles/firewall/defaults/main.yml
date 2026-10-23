@@ -1,0 +1,27 @@
+---
+lab_vpn_interface: wg0
+lab_wireguard_port: 51820
+lab_loki_port: 3100
+lab_grafana_port: 3000
+lab_http_port: '{{ lab_web_http_port | default(80) }}'
+lab_reviewer_enabled: false
+lab_demo_http_enabled: false
+lab_demo_http_sources: ['0.0.0.0/0']
+lab_dhcpv6_enabled: false
+lab_apt_package_versions: {}
+lab_access_checks_passed: false
+lab_private_egress_cidrs:
+  - 0.0.0.0/8
+  - 10.0.0.0/8
+  - 100.64.0.0/10
+  - 127.0.0.0/8
+  - 169.254.0.0/16
+  - 172.16.0.0/12
+  - 192.0.0.0/24
+  - 192.0.2.0/24
+  - 192.168.0.0/16
+  - 198.18.0.0/15
+  - 198.51.100.0/24
+  - 203.0.113.0/24
+  - 224.0.0.0/4
+  - 240.0.0.0/4

@@ -1,0 +1,21 @@
+---
+- name: Check baseline phase and account contract
+  ansible.builtin.assert:
+    that:
+      - lab_phase in ['bootstrap', 'secured', 'commit']
+      - lab_admin_user is match('^[a-z_][a-z0-9_-]{0,30}$')
+      - lab_admin_user != 'root'
+      - lab_vpn_interface is match('^[a-zA-Z0-9_=+.-]{1,15}$')
+      - lab_access_rollback_seconds | int >= 300
+      - lab_access_rollback_seconds | int <= 3600
+    fail_msg: Explicit bootstrap/secured/commit phase and valid account/guard settings are required.
+
+- name: Prepare administrative account and recovery tooling
+  ansible.builtin.import_tasks: bootstrap.yml
+  when: lab_phase == 'bootstrap'
+  tags: [baseline_bootstrap]
+
+- name: Apply SSH restrictions only after separate VPN verification
+  ansible.builtin.import_tasks: secure.yml
+  when: lab_phase == 'secured'
+  tags: [ssh_hardening]

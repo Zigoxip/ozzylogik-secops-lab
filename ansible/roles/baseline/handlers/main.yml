@@ -1,0 +1,14 @@
+---
+- name: Reload systemd for access guard
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart bounded journal
+  ansible.builtin.systemd_service:
+    name: systemd-journald
+    state: restarted
+
+- name: Reload verified SSH policy
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: reloaded

@@ -1,0 +1,21 @@
+---
+- name: Restart dedicated Docker daemon
+  ansible.builtin.systemd_service:
+    name: docker
+    state: restarted
+  when: not ansible_check_mode
+
+- name: Restart the WAF container
+  # A partial docker_container spec can reconcile image defaults and recreate it.
+  # Restart the fully declared container without changing its network or mounts.
+  ansible.builtin.command:
+    argv: [/usr/bin/docker, --host=unix:///var/run/docker.sock, restart, '{{ lab_web_container_name }}']
+  changed_when: true
+  when: not ansible_check_mode
+
+- name: Reload WAF log rotation units
+  ansible.builtin.systemd_service:
+    name: ozzylogik-waf-logrotate.timer
+    daemon_reload: true
+    enabled: true
+    state: started

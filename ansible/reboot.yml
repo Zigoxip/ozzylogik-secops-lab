@@ -1,0 +1,69 @@
+---
+- name: Verify the approved guests after a sequential reboot
+  hosts: all
+  order: sorted
+  serial: 1
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - name: Require explicit reboot approval and the administrative VPN path
+      ansible.builtin.assert:
+        that:
+          - lab_reboot_approved | default(false) | bool
+          - ansible_play_hosts_all | sort == ['ubu1', 'ubu2']
+          - ansible_user == lab_admin_user
+          - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups['monitoring'] else lab_web_wg_ip)
+        quiet: true
+    - name: Inspect the access transaction before rebooting
+      ansible.builtin.command:
+        argv: [/usr/local/sbin/ozzylogik-access-guard, status]
+      register: lab_reboot_guard
+      changed_when: false
+    - name: Refuse a reboot while access changes remain uncommitted
+      ansible.builtin.assert:
+        that: lab_reboot_guard.stdout == 'clear'
+        quiet: true
+  tasks:
+    - name: Reboot one approved guest and wait for a fresh VPN connection
+      ansible.builtin.reboot:
+        connect_timeout: 5
+        reboot_timeout: 300
+        post_reboot_delay: 10
+        test_command: id -u
+    - name: Require persistent guest services after reboot
+      ansible.builtin.command:
+        argv: [systemctl, is-active, '{{ item }}']
+      loop: [qemu-guest-agent, ssh, ozzylogik-firewall, wg-quick@wg0]
+      changed_when: false
+    - name: Wait for the web health resource after reboot
+      ansible.builtin.uri:
+        url: http://127.0.0.1:80/healthz
+        status_code: 200
+      register: lab_reboot_web_health
+      until: lab_reboot_web_health.status == 200
+      retries: 20
+      delay: 3
+      when: inventory_hostname in groups['web']
+    - name: Require the collector after reboot
+      ansible.builtin.command:
+        argv: [systemctl, is-active, ozzylogik-alloy]
+      changed_when: false
+      when: inventory_hostname in groups['web']
+    - name: Wait for Loki readiness after reboot
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3100/ready
+        status_code: 200
+      register: lab_reboot_loki_health
+      until: lab_reboot_loki_health.status == 200
+      retries: 20
+      delay: 3
+      when: inventory_hostname in groups['monitoring']
+    - name: Verify Grafana health after reboot
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3000/api/health
+        status_code: 200
+      register: lab_reboot_grafana_health
+      until: lab_reboot_grafana_health.status == 200
+      retries: 20
+      delay: 3
+      when: inventory_hostname in groups['monitoring']

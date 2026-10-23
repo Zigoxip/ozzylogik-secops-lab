@@ -1,0 +1,17 @@
+---
+- name: Require an explicit firewall phase
+  ansible.builtin.assert:
+    that:
+      - lab_phase in ['bootstrap', 'secured', 'commit']
+      - (inventory_hostname in groups.get('monitoring', [])) != (inventory_hostname in groups.get('web', []))
+    fail_msg: Set a phase and place each guest in exactly one of web/monitoring.
+
+- name: Apply the phase-specific guest firewall
+  ansible.builtin.import_tasks: apply.yml
+  when: lab_phase in ['bootstrap', 'secured']
+  tags: [guest_firewall]
+
+- name: Commit only after independent acceptance checks
+  ansible.builtin.import_tasks: commit.yml
+  when: lab_phase == 'commit'
+  tags: [access_commit]

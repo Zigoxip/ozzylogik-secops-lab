@@ -1,0 +1,16 @@
+---
+- name: Require separate confirmation of new-session VPN and LAN negative tests
+  ansible.builtin.assert:
+    that:
+      - lab_access_checks_passed | bool
+      - lab_console_recovery_verified | default(false) | bool
+      - ansible_user == lab_admin_user
+      - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups.get('monitoring', []) else lab_web_wg_ip)
+    fail_msg: Commit requires independent successful checks and the administrative VPN connection. No timeout is an approval.
+
+- name: Commit the access transaction and stop its rollback timer
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/ozzylogik-access-guard, commit]
+  register: lab_access_commit
+  changed_when: "lab_access_commit.stdout == 'committed'"
+  when: not ansible_check_mode

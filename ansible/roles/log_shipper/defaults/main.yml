@@ -1,0 +1,14 @@
+---
+lab_alloy_version: "1.21.1"
+lab_alloy_archive_sha256: "83e7ad1663a1271af2f507ad1af53cdb0a0fbb19a1b661895bcc426af68f2774"
+lab_alloy_archive_url: "https://github.com/grafana/alloy/releases/download/v{{ lab_alloy_version }}/alloy-linux-amd64.zip"
+lab_alloy_user: alloy
+lab_alloy_group: alloy
+lab_alloy_config_dir: /etc/alloy
+lab_alloy_state_dir: /var/lib/alloy
+lab_alloy_wal_max_segment_age: 1h
+lab_loki_url: "http://10.77.42.1:3100/loki/api/v1/push"
+lab_log_instance: "{{ inventory_hostname }}"
+lab_web_log_dir: /var/log/ozzylogik/nginx
+lab_log_group: lab-logs
+lab_log_group_gid: 2800

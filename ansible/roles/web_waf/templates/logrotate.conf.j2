@@ -1,0 +1,16 @@
+{{ lab_web_log_dir }}/access.jsonl {{ lab_web_log_dir }}/audit.jsonl {{ lab_web_log_dir }}/error.log {
+    daily
+    maxsize {{ lab_web_log_max_size }}
+    rotate {{ lab_web_log_rotate_count }}
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%d-%H%M%S
+    create 0640 {{ lab_web_nginx_uid }} {{ lab_log_group }}
+    sharedscripts
+    postrotate
+        /usr/local/sbin/ozzylogik-reopen-waf-logs
+    endscript
+}

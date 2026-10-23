@@ -1,0 +1,92 @@
+---
+- name: Require a supplied public key without generating credentials
+  ansible.builtin.assert:
+    that:
+      - "lab_admin_public_key | default('') is match('^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp[0-9]+) [A-Za-z0-9+/=]+(?: .*)?$')"
+      - lab_admin_additional_public_keys is sequence
+      - lab_admin_additional_public_keys is not string
+    fail_msg: Supply the agreed administrative public key through local variables.
+  no_log: true
+
+- name: Install baseline packages from the selected Ubuntu repositories
+  ansible.builtin.apt:
+    name: "{{ item ~ ('=' ~ lab_apt_package_versions[item] if item in lab_apt_package_versions else '') }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  loop: [sudo, openssh-server]
+
+- name: Create the dedicated administrative account
+  ansible.builtin.user:
+    name: '{{ lab_admin_user }}'
+    shell: /bin/bash
+    create_home: true
+    groups: sudo
+    append: true
+    password_lock: true
+    state: present
+
+- name: Install only the agreed SSH public keys for the lab account
+  ansible.posix.authorized_key:
+    user: '{{ lab_admin_user }}'
+    key: "{{ ([lab_admin_public_key] + lab_admin_additional_public_keys) | join('\n') }}"
+    exclusive: true
+    manage_dir: true
+    state: present
+  no_log: true
+  diff: false
+
+- name: Permit noninteractive administrative automation on these lab VMs
+  ansible.builtin.template:
+    src: sudoers.j2
+    dest: /etc/sudoers.d/90-ozzylogik
+    owner: root
+    group: root
+    mode: '0440'
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Create directories for access recovery and journal limits
+  ansible.builtin.file:
+    path: '{{ item.path }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '{{ item.mode }}'
+  loop:
+    - {path: /var/lib/ozzylogik, mode: '0700'}
+    - {path: /var/lib/ozzylogik/access-rollback, mode: '0700'}
+    - {path: /etc/ssh/sshd_config.d, mode: '0755'}
+    - {path: /etc/systemd/journald.conf.d, mode: '0755'}
+
+- name: Install the guest-only transactional access guard
+  ansible.builtin.template:
+    src: access-guard.py.j2
+    dest: /usr/local/sbin/ozzylogik-access-guard
+    owner: root
+    group: root
+    mode: '0700'
+  diff: false
+
+- name: Install rollback service and timer
+  ansible.builtin.template:
+    src: '{{ item }}.j2'
+    dest: '/etc/systemd/system/{{ item }}'
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - ozzylogik-access-rollback.service
+    - ozzylogik-access-rollback.timer
+  notify: Reload systemd for access guard
+
+- name: Bound journal storage on the new guest
+  ansible.builtin.template:
+    src: journald.conf.j2
+    dest: /etc/systemd/journald.conf.d/90-ozzylogik.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart bounded journal
+
+- name: Make access guard units available before firewall and WireGuard
+  ansible.builtin.meta: flush_handlers

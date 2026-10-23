@@ -1,0 +1,65 @@
+---
+- import_playbook: preflight.yml
+
+- name: Update only the new guests and install access tools before rollback is armed
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Apply Ubuntu security and package updates inside the new clones
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+        dpkg_options: force-confdef,force-confold
+      environment:
+        NEEDRESTART_MODE: a
+
+    - name: Install prerequisites before the guarded access transition
+      ansible.builtin.apt:
+        name:
+          - sudo
+          - openssh-server
+          - nftables
+          - wireguard-tools
+          - procps
+          - ca-certificates
+          - unzip
+          - python3-requests
+          - logrotate
+          - tcpdump
+          - qemu-guest-agent
+        state: present
+        policy_rc_d: 101
+
+    - name: Read the real Docker package candidate
+      ansible.builtin.command: apt-cache policy docker.io
+      changed_when: false
+      register: lab_docker_policy
+      when: inventory_hostname in groups['web']
+
+    - name: Record the exact available Docker candidate for the web role
+      ansible.builtin.set_fact:
+        lab_docker_package_version: '{{ lab_docker_policy.stdout | regex_search("Candidate: ([^\s]+)", "\1") | first }}'
+      when: inventory_hostname in groups['web']
+
+    - name: Save the deployment package fact to the controller
+      ansible.builtin.copy:
+        content: '{{ {"lab_docker_package_version": lab_docker_package_version} | to_nice_yaml }}'
+        dest: '{{ playbook_dir }}/../.local/docker-package-pin.yml'
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+      when: inventory_hostname in groups['web']
+
+    - name: Read actual installed package versions for the local manifest
+      ansible.builtin.command: dpkg-query -W
+      changed_when: false
+      register: lab_package_manifest
+
+    - name: Save only the new guest package manifest locally
+      ansible.builtin.copy:
+        content: "{{ lab_package_manifest.stdout }}\n"
+        dest: '{{ playbook_dir }}/../.local/{{ inventory_hostname }}-packages-after-prepare.txt'
+        mode: '0600'
+      delegate_to: localhost
+      become: false

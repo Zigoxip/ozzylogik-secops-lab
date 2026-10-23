@@ -1,0 +1,19 @@
+---
+# Exact Ubuntu package candidate must be read from the new VM and recorded first.
+lab_docker_package: docker.io
+lab_docker_package_version: ""
+lab_web_image: "owasp/modsecurity-crs:4.30.0-nginx-202610180210@sha256:7698c48a41a43138ae317feeec964d1515b861cc1d9e50617bc1cdfe9f314e1d"
+lab_web_container_name: ozzylogik-waf
+lab_web_http_port: 80
+lab_web_bind_address: "0.0.0.0"
+lab_web_config_dir: /etc/ozzylogik/waf
+lab_web_site_dir: /srv/ozzylogik/site
+lab_web_log_dir: /var/log/ozzylogik/nginx
+lab_log_group: lab-logs
+lab_log_group_gid: 2800
+# nginx UID in the pinned Debian-based official image; verified again before use.
+lab_web_nginx_uid: 101
+lab_web_log_rotate_count: 14
+lab_web_log_max_size: 20M
+lab_web_memory: 768m
+lab_web_cpus: 1.0

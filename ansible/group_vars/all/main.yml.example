@@ -1,0 +1,10 @@
+# Draft only. Actual values and compatible pinned versions must be approved.
+lab_admin_user: labadmin
+lab_vpn_interface: wg0
+lab_vpn_cidr: __CHOOSE_AFTER_ROUTE_AUDIT__
+lab_admin_wg_ip: __ADMIN_WG_IP__
+lab_web_wg_ip: __UBU1_WG_IP__
+lab_hub_wg_ip: __UBU2_WG_IP__
+lab_wireguard_port: 51820
+lab_loki_retention: 168h
+# No passwords, tokens or private keys in this file.

@@ -1,0 +1,126 @@
+---
+- name: Check the agreed firewall inputs and recovery path
+  ansible.builtin.assert:
+    that:
+      - lab_console_recovery_verified | default(false) | bool
+      - lab_lan_interface is match('^[a-zA-Z0-9_.:-]{1,15}$')
+      - lab_vpn_interface is match('^[a-zA-Z0-9_=+.-]{1,15}$')
+      - lab_lan_interface != lab_vpn_interface
+      - lab_dns_ipv4 is sequence
+      - lab_dns_ipv4 is not string
+      - lab_dns_ipv4 | length > 0
+      - lab_hub_wg_ip != lab_web_wg_ip
+      - lab_admin_wg_ip not in [lab_hub_wg_ip, lab_web_wg_ip]
+      - not (lab_reviewer_enabled | bool) or lab_reviewer_wg_ip not in [lab_hub_wg_ip, lab_web_wg_ip, lab_admin_wg_ip]
+      - lab_phase != 'secured' or (lab_vpn_verified | default(false) | bool)
+      - lab_phase != 'secured' or ansible_user == lab_admin_user
+      - lab_phase != 'secured' or ansible_host == (lab_hub_wg_ip if inventory_hostname in groups.get('monitoring', []) else lab_web_wg_ip)
+    fail_msg: Supply approved guest interfaces/addresses, verified console recovery and a new VPN admin session for secured.
+
+- name: Install nftables without enabling or changing PVE firewall
+  ansible.builtin.apt:
+    name: "{{ 'nftables=' ~ lab_apt_package_versions['nftables'] if 'nftables' in lab_apt_package_versions else 'nftables' }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Prepare the directory for only the lab firewall table
+  ansible.builtin.file:
+    path: /etc/nftables.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Inspect candidate lab firewall files without applying them
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: root
+    mode: '{{ item.mode }}'
+  loop:
+    - {src: ozzylogik.nft.j2, dest: /etc/nftables.d/ozzylogik.nft, mode: '0600'}
+    - {src: nft-load.sh.j2, dest: /usr/local/sbin/ozzylogik-nft-load, mode: '0750'}
+    - {src: ozzylogik-firewall.service.j2, dest: /etc/systemd/system/ozzylogik-firewall.service, mode: '0644'}
+  check_mode: true
+  register: lab_firewall_candidates
+  diff: false
+
+- name: Inspect only the owned runtime table
+  ansible.builtin.command:
+    argv: [nft, list, table, inet, ozzylogik]
+  register: lab_firewall_runtime
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Inspect the owned firewall unit state without starting it
+  ansible.builtin.command:
+    argv: [systemctl, '{{ item }}', ozzylogik-firewall.service]
+  loop: [is-active, is-enabled]
+  register: lab_firewall_service
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Determine whether the firewall needs a guarded change
+  ansible.builtin.set_fact:
+    lab_firewall_change_required: >-
+      {{ (lab_firewall_candidates.results | selectattr('changed') | list | length > 0) or
+         lab_firewall_runtime.rc != 0 or
+         lab_firewall_service.results[0].rc != 0 or lab_firewall_service.results[1].stdout != 'enabled' }}
+
+- name: Arm the existing rollback guard before changing access
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/ozzylogik-access-guard, arm]
+  register: lab_firewall_guard
+  changed_when: "lab_firewall_guard.stdout == 'armed'"
+  when:
+    - lab_firewall_change_required | bool
+    - not ansible_check_mode
+
+- name: Install the atomic own-table loader
+  ansible.builtin.template:
+    src: nft-load.sh.j2
+    dest: /usr/local/sbin/ozzylogik-nft-load
+    owner: root
+    group: root
+    mode: '0750'
+    validate: /bin/bash -n %s
+
+- name: Install the checked phase-specific ruleset
+  ansible.builtin.template:
+    src: ozzylogik.nft.j2
+    dest: /etc/nftables.d/ozzylogik.nft
+    owner: root
+    group: root
+    mode: '0600'
+    validate: /usr/local/sbin/ozzylogik-nft-load --check %s
+  diff: false
+
+- name: Install a dedicated persistence unit that never flushes other tables
+  ansible.builtin.template:
+    src: ozzylogik-firewall.service.j2
+    dest: /etc/systemd/system/ozzylogik-firewall.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd for guest firewall
+
+- name: Load the persistence unit before applying the candidate
+  ansible.builtin.meta: flush_handlers
+
+- name: Atomically replace only the owned table while rollback remains armed
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/ozzylogik-nft-load, --apply, /etc/nftables.d/ozzylogik.nft]
+  changed_when: true
+  when:
+    - lab_firewall_change_required | bool
+    - not ansible_check_mode
+
+- name: Enable the guest firewall at boot
+  ansible.builtin.systemd_service:
+    name: ozzylogik-firewall
+    enabled: true
+    state: started

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Replace only this guest's inet ozzylogik table in one nft transaction.
+set -euo pipefail
+umask 077
+if [[ $# != 2 || ( "$1" != --check && "$1" != --apply ) ]]; then
+    printf 'Usage: ozzylogik-nft-load --check|--apply FILE\n' >&2
+    exit 2
+fi
+candidate="$2"
+batch="$(mktemp /run/ozzylogik-nft.XXXXXX)"
+trap 'rm -f -- "$batch"' EXIT
+if /usr/sbin/nft list table inet ozzylogik >/dev/null 2>&1; then
+    printf 'delete table inet ozzylogik\n' >"$batch"
+fi
+cat -- "$candidate" >>"$batch"
+/usr/sbin/nft -c -f "$batch"
+if [[ "$1" == --apply ]]; then
+    /usr/sbin/nft -f "$batch"
+fi

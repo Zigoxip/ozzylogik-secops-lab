@@ -1,0 +1,26 @@
+# Final VPN inventory. Copy to hosts.yml and replace the LAN placeholders.
+# Bootstrap uses a separate bootstrap.yml inventory with DHCP addresses.
+all:
+  children:
+    web:
+      hosts:
+        ubu1:
+          ansible_host: 10.77.42.2
+          # Optional Windows/reviewer peer: enable on BOTH hosts, not all.vars.
+          # lab_reviewer_enabled: true
+    monitoring:
+      hosts:
+        ubu2:
+          ansible_host: 10.77.42.1
+          # lab_reviewer_enabled: true
+  vars:
+    ansible_user: labadmin
+    ansible_ssh_private_key_file: '{{ lookup("env", "HOME") }}/.ssh/ozzylogik-lab'
+    ansible_ssh_common_args: '-o UserKnownHostsFile={{ lookup("env", "HOME") }}/.local/share/ozzylogik/known_hosts'
+    lab_bootstrap_admin_lan_ip: __WINDOWS_LAN_IP__
+    lab_hub_lan_ip: __UBU2_DHCP_RESERVATION__
+    lab_web_lan_ip: __UBU1_DHCP_RESERVATION__
+    lab_lan_cidr: __HOME_LAN_CIDR__
+    lab_dns_ipv4: [__HOME_DNS_IP__]
+    lab_dhcp_server_ipv4: __DHCP_SERVER_IP__
+    lab_docker_package_version: __PIN_ACTUAL_NOBLE_APT_CANDIDATE__

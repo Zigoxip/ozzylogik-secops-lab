@@ -1,0 +1,118 @@
+---
+- name: Validate the pinned native collector inputs
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == 'Debian'
+      - ansible_facts.architecture == 'x86_64'
+      - lab_alloy_version == '1.21.1'
+      - lab_alloy_archive_sha256 is match('^[a-f0-9]{64}$')
+      - lab_loki_url is match('^http://10[.]77[.]42[.]1:3100/loki/api/v1/push$')
+      - lab_alloy_state_dir.startswith('/var/lib/')
+    fail_msg: "This reviewed collector pin targets amd64 and the approved ubu2 WireGuard-only Loki endpoint."
+
+- name: Install native archive prerequisites
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - unzip
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create the shared log reader group
+  ansible.builtin.group:
+    name: "{{ lab_log_group }}"
+    gid: "{{ lab_log_group_gid }}"
+    system: true
+    state: present
+
+- name: Create the collector service group
+  ansible.builtin.group:
+    name: "{{ lab_alloy_group }}"
+    system: true
+    state: present
+
+- name: Create the unprivileged collector service account
+  ansible.builtin.user:
+    name: "{{ lab_alloy_user }}"
+    group: "{{ lab_alloy_group }}"
+    groups: "{{ lab_log_group }}"
+    append: true
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ lab_alloy_state_dir }}"
+    create_home: false
+  notify: Restart the log collector
+
+- name: Create root-owned collector installation directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /var/cache/ozzylogik
+    - /opt/ozzylogik/alloy
+    - "/opt/ozzylogik/alloy/{{ lab_alloy_version }}"
+    - "{{ lab_alloy_config_dir }}"
+
+- name: Create persistent collector positions and WAL storage
+  ansible.builtin.file:
+    path: "{{ lab_alloy_state_dir }}"
+    state: directory
+    owner: "{{ lab_alloy_user }}"
+    group: "{{ lab_alloy_group }}"
+    mode: "0750"
+
+- name: Download the checksum-verified fixed Alloy release
+  ansible.builtin.get_url:
+    url: "{{ lab_alloy_archive_url }}"
+    dest: "/var/cache/ozzylogik/alloy-{{ lab_alloy_version }}-linux-amd64.zip"
+    checksum: "sha256:{{ lab_alloy_archive_sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Extract the fixed Alloy release
+  ansible.builtin.unarchive:
+    src: "/var/cache/ozzylogik/alloy-{{ lab_alloy_version }}-linux-amd64.zip"
+    dest: "/opt/ozzylogik/alloy/{{ lab_alloy_version }}"
+    remote_src: true
+    creates: "/opt/ozzylogik/alloy/{{ lab_alloy_version }}/alloy-linux-amd64"
+
+- name: Install the pinned Alloy binary
+  ansible.builtin.copy:
+    src: "/opt/ozzylogik/alloy/{{ lab_alloy_version }}/alloy-linux-amd64"
+    remote_src: true
+    dest: /usr/local/bin/alloy
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart the log collector
+
+- name: Install and validate the collector configuration
+  ansible.builtin.template:
+    src: config.alloy.j2
+    dest: "{{ lab_alloy_config_dir }}/config.alloy"
+    owner: root
+    group: "{{ lab_alloy_group }}"
+    mode: "0640"
+    validate: /usr/local/bin/alloy validate --config.format=alloy --stability.level=experimental %s
+  notify: Restart the log collector
+
+- name: Install the native collector service
+  ansible.builtin.template:
+    src: alloy.service.j2
+    dest: /etc/systemd/system/ozzylogik-alloy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart the log collector
+
+- name: Enable the persistent native log collector
+  ansible.builtin.systemd_service:
+    name: ozzylogik-alloy
+    daemon_reload: true
+    enabled: true
+    state: started

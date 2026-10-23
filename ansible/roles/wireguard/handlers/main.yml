@@ -1,0 +1,11 @@
+---
+- name: Apply guest forwarding policy
+  ansible.builtin.command:
+    argv: [sysctl, -p, /etc/sysctl.d/90-ozzylogik-wireguard.conf]
+  changed_when: true
+
+- name: Restart guest WireGuard
+  ansible.builtin.systemd_service:
+    name: 'wg-quick@{{ lab_vpn_interface }}'
+    enabled: true
+    state: restarted

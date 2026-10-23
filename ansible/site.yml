@@ -1,0 +1,19 @@
+---
+- import_playbook: preflight.yml
+
+- name: Install native monitoring on the VPN hub
+  hosts: monitoring
+  become: true
+  gather_facts: true
+  vars_files:
+    - '{{ lab_controller_secret_file }}'
+  roles:
+    - monitoring
+
+- name: Install the web WAF and ship both log streams
+  hosts: web
+  become: true
+  gather_facts: true
+  roles:
+    - web_waf
+    - log_shipper

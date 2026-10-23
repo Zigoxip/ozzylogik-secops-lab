@@ -1,0 +1,23 @@
+---
+- name: Apply final SSH and firewall policy through an already verified VPN path
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    lab_phase: secured
+    lab_lan_interface: '{{ ansible_facts.default_ipv4.interface }}'
+  vars_files:
+    - '{{ lab_controller_secret_file }}'
+  pre_tasks:
+    - name: Require explicit evidence gates for the protected access transition
+      ansible.builtin.assert:
+        that:
+          - lab_vpn_verified | default(false) | bool
+          - lab_console_recovery_verified | default(false) | bool
+          - ansible_user == lab_admin_user
+          - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups['monitoring'] else lab_web_wg_ip)
+        quiet: true
+  roles:
+    - baseline
+    - firewall
+    - wireguard

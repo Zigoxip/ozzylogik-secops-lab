@@ -1,0 +1,1523 @@
+{
+  "schema_version": 1,
+  "stage": "baseline_acceptance",
+  "recorded_on": "2026-10-23",
+  "scope": {
+    "acceptance_complete": false,
+    "home_lan_addresses_omitted": true,
+    "home_interfaces_and_macs_omitted": true,
+    "key_material_and_credentials_omitted": true,
+    "port_probe_scope": "Listed TCP ports only; no UDP or exhaustive port scan claim",
+    "runtime_acceptance_complete": true,
+    "acceptance_completeness_note": "Runtime tests completed with the listed known limitations; seven-day retention expiry has not been observed"
+  },
+  "source_artifacts": [
+    "waf-acceptance-baseline.json",
+    "grafana-health.json",
+    "access-secured.json",
+    "vpn-port-checks.json",
+    "lan-port-checks.json",
+    "idempotence.json",
+    "versions-actual-baseline.json",
+    "http-loki-outage.json",
+    "central-logs-loki-outage-raw.json",
+    "log-restarts.json",
+    "log-rotation.json",
+    "reboot-proof.json",
+    "waf-acceptance-post-reboot.json",
+    "versions-actual-after-reboot.json",
+    "ansible-reboot-2026-10-23.log",
+    "central-logs-baseline-raw.json",
+    "final-state.json",
+    "idempotence-before-reboot.json"
+  ],
+  "waf": {
+    "observed_at_utc": "2026-10-23T02:54:29.003261Z",
+    "run_id": "7b844081c3704fccba764422960f4339",
+    "normal_http": 200,
+    "sqli_http": 403,
+    "observed_project_client_ip": "10.77.42.3",
+    "secrules_engine": "Enabled",
+    "components_observed": [
+      "OWASP_CRS/4.30.0\""
+    ],
+    "crs_rule_ids": [
+      "920350",
+      "942100",
+      "949110"
+    ],
+    "normal_central_access": true,
+    "sqli_central_access_and_audit": true,
+    "normal_marker": "ozzylogik-normal-7b844081c3704fccba764422960f4339",
+    "sqli_marker": "ozzylogik-sqli-7b844081c3704fccba764422960f4339",
+    "transaction_id": "02201e041be28694b69355f7a5d1e000",
+    "access_request_id": "02201e041be28694b69355f7a5d1e000",
+    "transaction_ids_match": true
+  },
+  "grafana": {
+    "database": "ok",
+    "version": "13.2.4",
+    "loki_datasource_status": "OK",
+    "loki_datasource_message": "Data source successfully connected."
+  },
+  "ssh": {
+    "observed_at_utc": "2026-10-23T02:44:57Z",
+    "guests": [
+      {
+        "guest": "ubu2",
+        "fresh_administrative_key_and_sudo_success": true,
+        "negative_authentication": [
+          {
+            "kind": "root",
+            "refused": true,
+            "offered": [
+              "publickey"
+            ]
+          },
+          {
+            "kind": "password",
+            "refused": true,
+            "offered": [
+              "publickey"
+            ]
+          },
+          {
+            "kind": "kbd",
+            "refused": true,
+            "offered": [
+              "publickey"
+            ]
+          }
+        ],
+        "effective_sshd": {
+          "permitrootlogin": "no",
+          "passwordauthentication": "no",
+          "kbdinteractiveauthentication": "no",
+          "pubkeyauthentication": "yes",
+          "authenticationmethods": "publickey",
+          "allowusers": "labadmin"
+        }
+      },
+      {
+        "guest": "ubu1",
+        "fresh_administrative_key_and_sudo_success": true,
+        "negative_authentication": [
+          {
+            "kind": "root",
+            "refused": true,
+            "offered": [
+              "publickey"
+            ]
+          },
+          {
+            "kind": "password",
+            "refused": true,
+            "offered": [
+              "publickey"
+            ]
+          },
+          {
+            "kind": "kbd",
+            "refused": true,
+            "offered": [
+              "publickey"
+            ]
+          }
+        ],
+        "effective_sshd": {
+          "permitrootlogin": "no",
+          "passwordauthentication": "no",
+          "kbdinteractiveauthentication": "no",
+          "pubkeyauthentication": "yes",
+          "authenticationmethods": "publickey",
+          "allowusers": "labadmin"
+        }
+      }
+    ]
+  },
+  "tcp_ports": {
+    "vpn_administrative_peer": [
+      {
+        "guest": "ubu1",
+        "port": 22,
+        "open": true,
+        "expected_open": true,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 80,
+        "open": true,
+        "expected_open": true,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 443,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 3000,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 3100,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 8080,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 8443,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 9096,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "port": 12345,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 22,
+        "open": true,
+        "expected_open": true,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 80,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 443,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 3000,
+        "open": true,
+        "expected_open": true,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 3100,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 8080,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 8443,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 9096,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "port": 12345,
+        "open": false,
+        "expected_open": false,
+        "passed": true
+      }
+    ],
+    "ordinary_windows_lan": [
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 22,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 80,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 3000,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 3100,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 8080,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 8443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 9096,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv4",
+        "port": 12345,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 22,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 80,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 3000,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 3100,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 8080,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 8443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 9096,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu2",
+        "address_family": "IPv6",
+        "port": 12345,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 22,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 80,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 3000,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 3100,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 8080,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 8443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 9096,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv4",
+        "port": 12345,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 22,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 80,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 3000,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 3100,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 8080,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 8443,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 9096,
+        "open": false,
+        "passed": true
+      },
+      {
+        "guest": "ubu1",
+        "address_family": "IPv6",
+        "port": 12345,
+        "open": false,
+        "passed": true
+      }
+    ],
+    "probe_timestamps_available_in_sources": false,
+    "all_reported_probes_passed": true
+  },
+  "pending_checks": [
+    "seven_day_retention_expiration_observation",
+    "parent_final_publication_readiness_review"
+  ],
+  "idempotence": {
+    "secure": {
+      "ubu1": {
+        "ok": 34,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      },
+      "ubu2": {
+        "ok": 34,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      }
+    },
+    "site": {
+      "ubu1": {
+        "ok": 45,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      },
+      "ubu2": {
+        "ok": 25,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      }
+    }
+  },
+  "runtime_versions": {
+    "ubu1": {
+      "os": "Ubuntu 24.04.5 LTS",
+      "kernel": "6.8.0-147-generic",
+      "packages": {
+        "nftables": "1.0.9-1ubuntu0.1",
+        "openssh-server": "1:9.6p1-3ubuntu13.20",
+        "qemu-guest-agent": "1:8.2.2+ds-0ubuntu1.18",
+        "sudo": "1.9.15p5-3ubuntu5.24.04.4",
+        "wireguard-tools": "1.0.20210914-1ubuntu4"
+      },
+      "nginx": "1.30.6",
+      "docker_package": "29.1.3-0ubuntu3~24.04.2",
+      "alloy": "1.21.1",
+      "docker_network_policy": {
+        "bridge": "none",
+        "iptables": false,
+        "ip6tables": false,
+        "ip-forward": false,
+        "ip-masq": false
+      }
+    },
+    "ubu2": {
+      "os": "Ubuntu 24.04.5 LTS",
+      "kernel": "6.8.0-147-generic",
+      "packages": {
+        "nftables": "1.0.9-1ubuntu0.1",
+        "openssh-server": "1:9.6p1-3ubuntu13.20",
+        "qemu-guest-agent": "1:8.2.2+ds-0ubuntu1.18",
+        "sudo": "1.9.15p5-3ubuntu5.24.04.4",
+        "wireguard-tools": "1.0.20210914-1ubuntu4"
+      },
+      "loki": "3.7.9",
+      "grafana": "13.2.4"
+    }
+  },
+  "known_limitations": [
+    {
+      "id": "combined_loki_outage_and_collector_restart",
+      "result": "failed",
+      "run_id": "3bf743679dbc4457a004f852d86f806c",
+      "scenario": "Stop Loki, send normal and SQLi, restart Alloy while Loki remains unavailable, then recover Loki",
+      "http_status_checks_passed": true,
+      "central_results": [
+        {
+          "correlation_id": "ozzylogik-normal-3bf743679dbc4457a004f852d86f806c",
+          "central_stream_count": 0
+        },
+        {
+          "correlation_id": "ozzylogik-sqli-3bf743679dbc4457a004f852d86f806c",
+          "central_stream_count": 0
+        }
+      ],
+      "raw_host_logs_retained": true,
+      "recovery_by_backfill_performed": false,
+      "delivery_guarantee": "No lossless guarantee for this combined failure; normal restart and standalone outage are separate tests"
+    },
+    {
+      "id": "retention_expiration_not_observed",
+      "configured_loki_retention": "168h",
+      "seven_day_expiration_observed": false
+    },
+    {
+      "id": "waf_restart_during_log_rotation",
+      "initial_hup_only_rotation_result": "failed",
+      "initial_failure": "Access reopened but the ModSecurity audit writer kept the rotated archive open; new central audit marker was absent",
+      "current_method": "Restart the pinned WAF container after rotation and wait for local HTTP readiness",
+      "brief_web_availability_gap": true,
+      "duration_bound_verified": false
+    }
+  ],
+  "log_restarts": {
+    "passed": true,
+    "loki_outage_with_collector_running": {
+      "stage": "loki-only",
+      "run_id": "94e103a5ce074bff9fb6a7fe49875c88",
+      "observed_at_utc": "2026-10-23T03:10:10.2991050Z",
+      "normal_http": 200,
+      "sqli_http": 403,
+      "normal_marker": "ozzylogik-normal-94e103a5ce074bff9fb6a7fe49875c88",
+      "sqli_marker": "ozzylogik-sqli-94e103a5ce074bff9fb6a7fe49875c88",
+      "secrules_engine": "Enabled",
+      "crs_rule_ids": [
+        "920350",
+        "942100",
+        "949110"
+      ],
+      "record_counts": {
+        "normal_access": 1,
+        "sqli_access": 1,
+        "sqli_audit": 1
+      },
+      "transaction_id": "588a84cddab8bb9e8f0d478ff8bfbcdf",
+      "access_request_id": "588a84cddab8bb9e8f0d478ff8bfbcdf",
+      "transaction_ids_match": true
+    },
+    "collector_restart_with_loki_available": {
+      "stage": "collector-restart",
+      "run_id": "44fc830ff18e4c539a25f4408a588c58",
+      "observed_at_utc": "2026-10-23T03:10:12.6974150Z",
+      "normal_http": 200,
+      "sqli_http": 403,
+      "normal_marker": "ozzylogik-normal-44fc830ff18e4c539a25f4408a588c58",
+      "sqli_marker": "ozzylogik-sqli-44fc830ff18e4c539a25f4408a588c58",
+      "secrules_engine": "Enabled",
+      "crs_rule_ids": [
+        "920350",
+        "942100",
+        "949110"
+      ],
+      "record_counts": {
+        "normal_access": 1,
+        "sqli_access": 1,
+        "sqli_audit": 1
+      },
+      "transaction_id": "c86d76460e129097f51bdbc93cddbd6c",
+      "access_request_id": "c86d76460e129097f51bdbc93cddbd6c",
+      "transaction_ids_match": true
+    },
+    "new_events_after_collector_restart": {
+      "stage": "collector-after",
+      "run_id": "77a4142c2825436987678e93174b1127",
+      "observed_at_utc": "2026-10-23T03:10:16.2033720Z",
+      "normal_http": 200,
+      "sqli_http": 403,
+      "normal_marker": "ozzylogik-normal-77a4142c2825436987678e93174b1127",
+      "sqli_marker": "ozzylogik-sqli-77a4142c2825436987678e93174b1127",
+      "secrules_engine": "Enabled",
+      "crs_rule_ids": [
+        "920350",
+        "942100",
+        "949110"
+      ],
+      "record_counts": {
+        "normal_access": 1,
+        "sqli_access": 1,
+        "sqli_audit": 1
+      },
+      "transaction_id": "7d4b905c14ad6665d33fe0361b8a6756",
+      "access_request_id": "7d4b905c14ad6665d33fe0361b8a6756",
+      "transaction_ids_match": true
+    },
+    "old_baseline_after_loki_restarts": {
+      "stage": "baseline",
+      "run_id": "7b844081c3704fccba764422960f4339",
+      "observed_at_utc": "2026-10-23T03:10:16.9316570Z",
+      "normal_http": 200,
+      "sqli_http": 403,
+      "normal_marker": "ozzylogik-normal-7b844081c3704fccba764422960f4339",
+      "sqli_marker": "ozzylogik-sqli-7b844081c3704fccba764422960f4339",
+      "secrules_engine": "Enabled",
+      "crs_rule_ids": [
+        "920350",
+        "942100",
+        "949110"
+      ],
+      "record_counts": {
+        "normal_access": 1,
+        "sqli_access": 1,
+        "sqli_audit": 1
+      },
+      "transaction_id": "02201e041be28694b69355f7a5d1e000",
+      "access_request_id": "02201e041be28694b69355f7a5d1e000",
+      "transaction_ids_match": true
+    },
+    "persistent_state_before": {
+      "access_positions_present": true,
+      "audit_positions_present": true,
+      "write_wal_state_present": true
+    },
+    "persistent_state_after": {
+      "access_positions_present": true,
+      "audit_positions_present": true,
+      "write_wal_state_present": true
+    },
+    "does_not_override_combined_failure": true
+  },
+  "log_rotation": {
+    "passed": true,
+    "forced_rounds": [
+      {
+        "round": 1,
+        "delivery": {
+          "stage": "rotation1",
+          "run_id": "4642599bb2324a3384d86ed9f90fe4d4",
+          "observed_at_utc": "2026-10-23T03:14:42.5566430Z",
+          "normal_http": 200,
+          "sqli_http": 403,
+          "normal_marker": "ozzylogik-normal-4642599bb2324a3384d86ed9f90fe4d4",
+          "sqli_marker": "ozzylogik-sqli-4642599bb2324a3384d86ed9f90fe4d4",
+          "secrules_engine": "Enabled",
+          "crs_rule_ids": [
+            "920350",
+            "942100",
+            "949110"
+          ],
+          "record_counts": {
+            "normal_access": 1,
+            "sqli_access": 1,
+            "sqli_audit": 1
+          },
+          "transaction_id": "262b91f26e1b3a34d87d08303c48dd11",
+          "access_request_id": "262b91f26e1b3a34d87d08303c48dd11",
+          "transaction_ids_match": true
+        },
+        "access_inode_changed": true,
+        "audit_inode_changed": false,
+        "active_access_and_audit_have_new_markers": true,
+        "active_access_mode": "0o640",
+        "active_audit_mode": "0o640",
+        "active_files_owner_and_group_verified": true,
+        "gzip_archive_count": 2
+      },
+      {
+        "round": 2,
+        "delivery": {
+          "stage": "rotation2",
+          "run_id": "40bd117febd448ee99bc5a32e08a321d",
+          "observed_at_utc": "2026-10-23T03:14:51.5908010Z",
+          "normal_http": 200,
+          "sqli_http": 403,
+          "normal_marker": "ozzylogik-normal-40bd117febd448ee99bc5a32e08a321d",
+          "sqli_marker": "ozzylogik-sqli-40bd117febd448ee99bc5a32e08a321d",
+          "secrules_engine": "Enabled",
+          "crs_rule_ids": [
+            "920350",
+            "942100",
+            "949110"
+          ],
+          "record_counts": {
+            "normal_access": 1,
+            "sqli_access": 1,
+            "sqli_audit": 1
+          },
+          "transaction_id": "27cfffc26aa64acded00ca739090a429",
+          "access_request_id": "27cfffc26aa64acded00ca739090a429",
+          "transaction_ids_match": true
+        },
+        "access_inode_changed": true,
+        "audit_inode_changed": true,
+        "active_access_and_audit_have_new_markers": true,
+        "active_access_mode": "0o640",
+        "active_audit_mode": "0o640",
+        "active_files_owner_and_group_verified": true,
+        "gzip_archive_count": 5
+      }
+    ],
+    "regular_service_result_success": true,
+    "regular_service_exit_status_zero": true,
+    "timer_enabled": true,
+    "timer_active": true,
+    "rotation_method": "Rename/create followed by WAF container restart and local HTTP readiness check",
+    "inode_note": "Round 1 audit was empty before rotation and retained its inode; round 2 audit and both access rotations changed inode. New audit markers were verified in the active file in both rounds."
+  },
+  "post_reboot": {
+    "sequential_guests": [
+      {
+        "guest": "ubu1",
+        "boot_id_changed": true,
+        "kernel": "6.8.0-147-generic",
+        "ipv4_forwarding": 0,
+        "ipv6_forwarding": 0,
+        "ansible_reboot_recap": {
+          "ok": 7,
+          "changed": 1,
+          "unreachable": 0,
+          "failed": 0
+        }
+      },
+      {
+        "guest": "ubu2",
+        "boot_id_changed": true,
+        "kernel": "6.8.0-147-generic",
+        "ipv4_forwarding": 1,
+        "ipv6_forwarding": 0,
+        "ansible_reboot_recap": {
+          "ok": 7,
+          "changed": 1,
+          "unreachable": 0,
+          "failed": 0
+        }
+      }
+    ],
+    "waf": {
+      "observed_at_utc": "2026-10-23T03:17:48.7699740Z",
+      "run_id": "474493fc8fac4366a9ab6b5a3399219c",
+      "normal_http": 200,
+      "sqli_http": 403,
+      "observed_project_client_ip": "10.77.42.3",
+      "secrules_engine": "Enabled",
+      "crs_rule_ids": [
+        "920350",
+        "942100",
+        "949110"
+      ],
+      "record_counts": {
+        "normal_access": 1,
+        "sqli_access": 1,
+        "sqli_audit": 1
+      },
+      "normal_marker": "ozzylogik-normal-474493fc8fac4366a9ab6b5a3399219c",
+      "sqli_marker": "ozzylogik-sqli-474493fc8fac4366a9ab6b5a3399219c",
+      "transaction_id": "9cb890cb0707a4b70e26feafe023053e",
+      "access_request_id": "9cb890cb0707a4b70e26feafe023053e",
+      "transaction_ids_match": true
+    },
+    "ssh": {
+      "observed_at_utc": "2026-10-23T03:18:21Z",
+      "guests": [
+        {
+          "guest": "ubu2",
+          "fresh_administrative_key_and_sudo_success": true,
+          "effective_sshd": {
+            "permitrootlogin": "no",
+            "passwordauthentication": "no",
+            "kbdinteractiveauthentication": "no",
+            "pubkeyauthentication": "yes",
+            "authenticationmethods": "publickey",
+            "allowusers": "labadmin"
+          },
+          "negative_authentication": [
+            {
+              "kind": "root",
+              "refused": true,
+              "offered": [
+                "publickey"
+              ]
+            },
+            {
+              "kind": "password",
+              "refused": true,
+              "offered": [
+                "publickey"
+              ]
+            },
+            {
+              "kind": "kbd",
+              "refused": true,
+              "offered": [
+                "publickey"
+              ]
+            }
+          ]
+        },
+        {
+          "guest": "ubu1",
+          "fresh_administrative_key_and_sudo_success": true,
+          "effective_sshd": {
+            "permitrootlogin": "no",
+            "passwordauthentication": "no",
+            "kbdinteractiveauthentication": "no",
+            "pubkeyauthentication": "yes",
+            "authenticationmethods": "publickey",
+            "allowusers": "labadmin"
+          },
+          "negative_authentication": [
+            {
+              "kind": "root",
+              "refused": true,
+              "offered": [
+                "publickey"
+              ]
+            },
+            {
+              "kind": "password",
+              "refused": true,
+              "offered": [
+                "publickey"
+              ]
+            },
+            {
+              "kind": "kbd",
+              "refused": true,
+              "offered": [
+                "publickey"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "tcp_ports": {
+      "vpn_administrative_peer": [
+        {
+          "guest": "ubu1",
+          "port": 22,
+          "open": true,
+          "expected_open": true,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 80,
+          "open": true,
+          "expected_open": true,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 443,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 3000,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 3100,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 8080,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 8443,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 9096,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu1",
+          "port": 12345,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 22,
+          "open": true,
+          "expected_open": true,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 80,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 443,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 3000,
+          "open": true,
+          "expected_open": true,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 3100,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 8080,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 8443,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 9096,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        },
+        {
+          "guest": "ubu2",
+          "port": 12345,
+          "open": false,
+          "expected_open": false,
+          "passed": true
+        }
+      ],
+      "ordinary_windows_lan": [
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 22,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 80,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 3000,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 3100,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 8080,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 8443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 9096,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv4",
+          "port": 12345,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 22,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 80,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 3000,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 3100,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 8080,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 8443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 9096,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu2",
+          "address_family": "IPv6",
+          "port": 12345,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 22,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 80,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 3000,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 3100,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 8080,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 8443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 9096,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv4",
+          "port": 12345,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 22,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 80,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 3000,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 3100,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 8080,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 8443,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 9096,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        },
+        {
+          "guest": "ubu1",
+          "address_family": "IPv6",
+          "port": 12345,
+          "open": false,
+          "passed": true,
+          "expected_open": false
+        }
+      ],
+      "all_reported_probes_passed": true,
+      "probe_timestamps_available_in_sources": false,
+      "lan_pass_derivation": "Source records contain open, not pass; pass is computed as open=false against the agreed closed-port expectation"
+    },
+    "grafana": {
+      "database": "ok",
+      "version": "13.2.4",
+      "loki_datasource_status": "OK"
+    },
+    "old_baseline_record_counts": {
+      "normal_access": 1,
+      "sqli_access": 1,
+      "sqli_audit": 1
+    }
+  },
+  "runtime_versions_observation": "Current running kernel updated from reboot-proof.json; other package/runtime versions selected from versions-actual-baseline.json",
+  "idempotence_before_reboot": {
+    "secure": {
+      "ubu1": {
+        "ok": 34,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      },
+      "ubu2": {
+        "ok": 34,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      }
+    },
+    "site": {
+      "ubu1": {
+        "ok": 45,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      },
+      "ubu2": {
+        "ok": 25,
+        "changed": 0,
+        "unreachable": 0,
+        "failed": 0
+      }
+    }
+  },
+  "idempotence_observation": "Final ordinary secure and site runs after both guest reboots and the deployed rotation helper",
+  "final_state": {
+    "checked_at_utc": "2026-10-23T03:23:13.2185110Z",
+    "guests": {
+      "ubu1": {
+        "units": {
+          "ssh": {
+            "active": "active",
+            "enabled": "disabled"
+          },
+          "ssh.socket": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "qemu-guest-agent": {
+            "active": "active",
+            "enabled": "static"
+          },
+          "wg-quick@wg0": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "ozzylogik-firewall": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "docker": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "ozzylogik-alloy": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "ozzylogik-waf-logrotate.timer": {
+            "active": "active",
+            "enabled": "enabled"
+          }
+        },
+        "access_guard": "clear",
+        "rollback_timer_enabled": "disabled",
+        "pending_snapshot_exists": false,
+        "disk": {
+          "total_bytes": 19682557952,
+          "used_bytes": 4709044224,
+          "free_bytes": 14956736512
+        },
+        "container": {
+          "running": true,
+          "health": "healthy",
+          "network_mode": "host",
+          "published_port_binding_count": 0,
+          "mount_count": 3,
+          "readonly_mount_count": 2,
+          "writable_mount_count": 1,
+          "cap_add": [
+            "CHOWN",
+            "DAC_OVERRIDE",
+            "FOWNER",
+            "NET_BIND_SERVICE",
+            "SETGID",
+            "SETUID"
+          ],
+          "cap_drop": [
+            "ALL"
+          ],
+          "restart_policy": "unless-stopped",
+          "oom_killed": false
+        },
+        "collector_state": {
+          "access_positions": true,
+          "audit_positions": true,
+          "wal_exists": true
+        }
+      },
+      "ubu2": {
+        "units": {
+          "ssh": {
+            "active": "active",
+            "enabled": "disabled"
+          },
+          "ssh.socket": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "qemu-guest-agent": {
+            "active": "active",
+            "enabled": "static"
+          },
+          "wg-quick@wg0": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "ozzylogik-firewall": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "loki": {
+            "active": "active",
+            "enabled": "enabled"
+          },
+          "grafana-server": {
+            "active": "active",
+            "enabled": "enabled"
+          }
+        },
+        "access_guard": "clear",
+        "rollback_timer_enabled": "disabled",
+        "pending_snapshot_exists": false,
+        "disk": {
+          "total_bytes": 30083776512,
+          "used_bytes": 5359529984,
+          "free_bytes": 24707469312
+        },
+        "loki_storage_present": true
+      }
+    },
+    "service_activation_note": "ssh.service active/disabled is expected with active/enabled ssh.socket; qemu-guest-agent active/static is expected under udev activation"
+  }
+}

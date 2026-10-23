@@ -1,0 +1,8 @@
+# Installed only in the secured phase after a new VPN login succeeds.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+PermitEmptyPasswords no
+AllowUsers {{ lab_admin_user }}

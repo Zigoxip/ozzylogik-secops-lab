@@ -1,0 +1,144 @@
+---
+- name: Check WireGuard role phase and topology
+  ansible.builtin.assert:
+    that:
+      - lab_phase in ['bootstrap', 'secured']
+      - (inventory_hostname in groups.get('monitoring', [])) != (inventory_hostname in groups.get('web', []))
+      - lab_vpn_interface is match('^[a-zA-Z0-9_=+.-]{1,15}$')
+      - lab_vpn_prefixlen | int == 29
+      - lab_wireguard_port | int >= 1024
+      - lab_wireguard_port | int <= 65535
+      - lab_wireguard_mtu | int >= 1280
+      - lab_wireguard_mtu | int <= 1420
+      - lab_console_recovery_verified | default(false) | bool
+    fail_msg: Supply the approved topology, verified recovery and explicit access phase.
+
+- name: Verify supplied key material exists without disclosing it
+  ansible.builtin.assert:
+    that:
+      - lab_wg_hub_public_key | default('') is match('^[A-Za-z0-9+/]{43}=$')
+      - lab_wg_web_public_key | default('') is match('^[A-Za-z0-9+/]{43}=$')
+      - lab_wg_admin_public_key | default('') is match('^[A-Za-z0-9+/]{43}=$')
+      - (lab_wg_hub_private_key if inventory_hostname in groups.get('monitoring', []) else lab_wg_web_private_key) is match('^[A-Za-z0-9+/]{43}=$')
+      - not (lab_reviewer_enabled | bool) or (lab_wg_reviewer_public_key | default('') is match('^[A-Za-z0-9+/]{43}=$'))
+    fail_msg: Supply existing matching keys from the external local secret store; the role does not generate keys.
+  no_log: true
+
+- name: Install WireGuard userspace tools
+  ansible.builtin.apt:
+    name: "{{ item ~ ('=' ~ lab_apt_package_versions[item] if item in lab_apt_package_versions else '') }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  loop: [wireguard-tools, procps]
+
+- name: Prepare private WireGuard configuration directory
+  ansible.builtin.file:
+    path: /etc/wireguard
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install an offline configuration and matching-key validator
+  ansible.builtin.copy:
+    src: validate-wg.py
+    dest: /usr/local/sbin/ozzylogik-wg-check
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Inspect candidate WireGuard configuration without changing it
+  ansible.builtin.template:
+    src: wg.conf.j2
+    dest: '/etc/wireguard/{{ lab_vpn_interface }}.conf'
+    owner: root
+    group: root
+    mode: '0600'
+  check_mode: true
+  register: lab_wg_candidate
+  no_log: true
+  diff: false
+
+- name: Inspect persistent forwarding settings without changing them
+  ansible.builtin.template:
+    src: forwarding.conf.j2
+    dest: /etc/sysctl.d/90-ozzylogik-wireguard.conf
+    owner: root
+    group: root
+    mode: '0600'
+  check_mode: true
+  register: lab_forwarding_candidate
+
+- name: Inspect current forwarding values
+  ansible.builtin.command:
+    argv: [sysctl, -n, '{{ item }}']
+  loop: [net.ipv4.ip_forward, net.ipv6.conf.all.forwarding]
+  register: lab_forwarding_runtime
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Inspect the oneshot WireGuard unit without restarting it
+  ansible.builtin.command:
+    argv: [systemctl, '{{ item }}', 'wg-quick@{{ lab_vpn_interface }}.service']
+  loop: [is-active, is-enabled]
+  register: lab_wg_service
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Determine whether WireGuard access configuration needs a transaction
+  ansible.builtin.set_fact:
+    lab_wg_change_required: >-
+      {{ lab_wg_candidate.changed or lab_forwarding_candidate.changed or
+         lab_wg_service.results[0].rc != 0 or lab_wg_service.results[1].stdout != 'enabled' or
+         (not ansible_check_mode and
+          (lab_forwarding_runtime.results[0].stdout != ('1' if inventory_hostname in groups.get('monitoring', []) else '0') or
+           lab_forwarding_runtime.results[1].stdout != '0')) }}
+
+- name: Guard existing access before WireGuard or forwarding changes
+  ansible.builtin.command:
+    argv: [/usr/local/sbin/ozzylogik-access-guard, arm]
+  register: lab_wg_guard
+  changed_when: "lab_wg_guard.stdout == 'armed'"
+  when:
+    - lab_wg_change_required | bool
+    - not ansible_check_mode
+
+- name: Write the private WireGuard configuration
+  ansible.builtin.template:
+    src: wg.conf.j2
+    dest: '/etc/wireguard/{{ lab_vpn_interface }}.conf'
+    owner: root
+    group: root
+    mode: '0600'
+    validate: /usr/local/sbin/ozzylogik-wg-check %s
+  no_log: true
+  diff: false
+  notify: Restart guest WireGuard
+
+- name: Write forwarding policy for only this guest
+  ansible.builtin.template:
+    src: forwarding.conf.j2
+    dest: /etc/sysctl.d/90-ozzylogik-wireguard.conf
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Apply guest forwarding policy
+
+- name: Repair a drifted forwarding runtime without rewriting unrelated sysctls
+  ansible.builtin.command:
+    argv: [sysctl, -p, /etc/sysctl.d/90-ozzylogik-wireguard.conf]
+  changed_when: true
+  when:
+    - not ansible_check_mode
+    - lab_forwarding_runtime.results[0].stdout != ('1' if inventory_hostname in groups.get('monitoring', []) else '0') or lab_forwarding_runtime.results[1].stdout != '0'
+
+- name: Enable and start WireGuard after the bootstrap firewall exists
+  ansible.builtin.systemd_service:
+    name: 'wg-quick@{{ lab_vpn_interface }}'
+    enabled: true
+    state: started
+
+- name: Apply forwarding and WireGuard changes before returning
+  ansible.builtin.meta: flush_handlers

@@ -1,0 +1,319 @@
+---
+- name: Validate WAF platform and immutable image input
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == 'Debian'
+      - ansible_facts.architecture == 'x86_64'
+      - lab_docker_package_version | length > 0
+      - "lab_web_image is match('^owasp/modsecurity-crs:[^@]+@sha256:[a-f0-9]{64}$')"
+      - lab_web_http_port | int == 80
+      - lab_web_bind_address == '0.0.0.0'
+      - lab_web_log_rotate_count | int > 1
+    fail_msg: "Pin the real docker.io apt candidate in lab_docker_package_version before deployment; this role expects the approved amd64 host-network HTTP/80 design."
+
+- name: Install the pinned Docker package and host log rotation support
+  ansible.builtin.apt:
+    name:
+      - "{{ lab_docker_package }}={{ lab_docker_package_version }}"
+      - python3-requests
+      - logrotate
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    allow_downgrade: false
+    policy_rc_d: 101
+
+- name: Prepare configuration for the dedicated host-network Docker daemon
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Disable unused bridge networking and Docker forwarding changes
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    content: |
+      {
+        "bridge": "none",
+        "iptables": false,
+        "ip6tables": false,
+        "ip-forward": false,
+        "ip-masq": false
+      }
+    owner: root
+    group: root
+    mode: '0644'
+    validate: /usr/bin/dockerd --validate --config-file %s
+  notify: Restart dedicated Docker daemon
+
+- name: Apply Docker networking policy before reconciling the WAF container
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable Docker on the dedicated web VM
+  ansible.builtin.systemd_service:
+    name: docker
+    enabled: true
+    state: started
+
+- name: Create the shared read-only log access group
+  ansible.builtin.group:
+    name: "{{ lab_log_group }}"
+    gid: "{{ lab_log_group_gid }}"
+    system: true
+    state: present
+
+- name: Create WAF configuration and static content directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+    state: directory
+  loop:
+    - "{{ lab_web_config_dir }}"
+    - "{{ lab_web_site_dir }}"
+    - /var/log/ozzylogik
+
+- name: Preserve the private parent directory shared with the access guard
+  ansible.builtin.file:
+    path: /var/lib/ozzylogik
+    owner: root
+    group: root
+    mode: '0700'
+    state: directory
+
+- name: Create the log directory readable by the collector
+  ansible.builtin.file:
+    path: "{{ lab_web_log_dir }}"
+    owner: "{{ lab_web_nginx_uid }}"
+    group: "{{ lab_log_group }}"
+    mode: "0750"
+    state: directory
+
+- name: Create log files without truncating existing records
+  ansible.builtin.file:
+    path: "{{ lab_web_log_dir }}/{{ item }}"
+    owner: "{{ lab_web_nginx_uid }}"
+    group: "{{ lab_log_group }}"
+    mode: "0640"
+    state: touch
+    access_time: preserve
+    modification_time: preserve
+  loop:
+    - access.jsonl
+    - audit.jsonl
+    - error.log
+
+- name: Install the Nginx static WAF configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ lab_web_config_dir }}/nginx.conf.template"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart the WAF container
+
+- name: Install the lab demonstration page
+  ansible.builtin.template:
+    src: index.html.j2
+    dest: "{{ lab_web_site_dir }}/index.html"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Install the static health-check resource
+  ansible.builtin.copy:
+    content: "ok\n"
+    dest: "{{ lab_web_site_dir }}/healthz"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Pull the immutable official OWASP CRS image
+  community.docker.docker_image_pull:
+    docker_host: unix:///var/run/docker.sock
+    name: "{{ lab_web_image }}"
+    platform: linux/amd64
+    pull: not_present
+
+- name: Verify the pinned image nginx worker UID
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/docker
+      - --host=unix:///var/run/docker.sock
+      - run
+      - --rm
+      - --network=none
+      - --entrypoint=/usr/bin/id
+      - "{{ lab_web_image }}"
+      - -u
+      - nginx
+  register: lab_web_image_uid
+  changed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: Confirm host log ownership matches the pinned image
+  ansible.builtin.assert:
+    that:
+      - lab_web_image_uid.stdout | trim | int == lab_web_nginx_uid | int
+  when: not ansible_check_mode
+
+- name: Start Nginx with ModSecurity and OWASP CRS
+  community.docker.docker_container:
+    docker_host: unix:///var/run/docker.sock
+    name: "{{ lab_web_container_name }}"
+    image: "{{ lab_web_image }}"
+    state: started
+    restart_policy: unless-stopped
+    network_mode: host
+    user: "0:0"
+    # Master binds HTTP/80; nginx workers drop to their unprivileged image user.
+    cap_drop:
+      - ALL
+    capabilities:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - NET_BIND_SERVICE
+      - SETGID
+      - SETUID
+    security_opts:
+      - no-new-privileges:true
+    memory: "{{ lab_web_memory }}"
+    cpus: "{{ lab_web_cpus }}"
+    pids_limit: 128
+    log_driver: local
+    log_options:
+      max-size: 10m
+      max-file: "3"
+    env:
+      # The upstream low-port preflight reads these unused default-template ports.
+      # Our full nginx.conf template is the sole listener authority (HTTP/80).
+      PORT: "8080"
+      SSL_PORT: "8443"
+      NGINX_WORKER_PROCESSES: "1"
+      MODSEC_RULE_ENGINE: "On"
+      MODSEC_AUDIT_ENGINE: RelevantOnly
+      MODSEC_AUDIT_LOG_FORMAT: JSON
+      MODSEC_AUDIT_LOG_TYPE: Serial
+      MODSEC_AUDIT_LOG_PARTS: ABFHZ
+      MODSEC_AUDIT_LOG: "{{ lab_web_log_dir }}/audit.jsonl"
+      MODSEC_AUDIT_LOG_RELEVANT_STATUS: "^(?:5|4(?!04))"
+      MODSEC_DEBUG_LOGLEVEL: "0"
+      BLOCKING_PARANOIA: "1"
+      DETECTION_PARANOIA: "1"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+    volumes:
+      - "{{ lab_web_config_dir }}/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro"
+      - "{{ lab_web_site_dir }}:/srv/ozzylogik/site:ro"
+      - "{{ lab_web_log_dir }}:{{ lab_web_log_dir }}:rw"
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - --show-error
+        - --max-time
+        - "3"
+        - "http://127.0.0.1:{{ lab_web_http_port }}/healthz"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+- name: Install graceful log reopen helper
+  ansible.builtin.template:
+    src: reopen-waf-logs.sh.j2
+    dest: /usr/local/sbin/ozzylogik-reopen-waf-logs
+    owner: root
+    group: root
+    mode: "0750"
+  tags: [waf_log_rotation]
+
+- name: Install dedicated WAF log rotation policy
+  ansible.builtin.template:
+    src: logrotate.conf.j2
+    dest: "{{ lab_web_config_dir }}/logrotate.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [waf_log_rotation]
+
+- name: Install the WAF log rotation service
+  ansible.builtin.template:
+    src: logrotate.service.j2
+    dest: /etc/systemd/system/ozzylogik-waf-logrotate.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload WAF log rotation units
+  tags: [waf_log_rotation]
+
+- name: Install the WAF log rotation timer
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ozzylogik-waf-logrotate.timer
+    content: |
+      [Unit]
+      Description=Check OZZYLOGIK WAF log rotation every five minutes
+      [Timer]
+      OnBootSec=5min
+      OnUnitActiveSec=5min
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload WAF log rotation units
+  tags: [waf_log_rotation]
+
+- name: Enable WAF log rotation checks
+  ansible.builtin.systemd_service:
+    name: ozzylogik-waf-logrotate.timer
+    daemon_reload: true
+    enabled: true
+    state: started
+  tags: [waf_log_rotation]
+
+- name: Apply WAF configuration handlers before readiness checks
+  ansible.builtin.meta: flush_handlers
+
+- name: Inspect the declared WAF container after handlers
+  community.docker.docker_container_info:
+    docker_host: unix:///var/run/docker.sock
+    name: '{{ lab_web_container_name }}'
+  register: lab_web_runtime
+  when: not ansible_check_mode
+
+- name: Require host networking and all three declared mounts after handlers
+  ansible.builtin.assert:
+    that:
+      - lab_web_runtime.exists
+      - lab_web_runtime.container.HostConfig.NetworkMode == 'host'
+      - lab_web_runtime.container.HostConfig.PortBindings | default({}, true) == {}
+      - lab_web_runtime.container.Mounts | length == 3
+      - lab_web_runtime.container.Config.Image == lab_web_image
+    fail_msg: The running WAF container differs from the declared network, mounts or image.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Validate the running Nginx configuration
+  ansible.builtin.command:
+    argv: [/usr/bin/docker, --host=unix:///var/run/docker.sock, exec, '{{ lab_web_container_name }}', nginx, -t]
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Wait for the local WAF health resource
+  ansible.builtin.uri:
+    url: 'http://127.0.0.1:{{ lab_web_http_port }}/healthz'
+    status_code: 200
+  register: lab_web_ready
+  retries: 20
+  delay: 3
+  until: lab_web_ready.status == 200
+  when: not ansible_check_mode

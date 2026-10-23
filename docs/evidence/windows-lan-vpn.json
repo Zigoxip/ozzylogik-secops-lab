@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "stage": "native_windows_wireguard_home_lan",
+  "scope": {
+    "home_lan_endpoint_omitted": true,
+    "profile_paths_keys_and_credentials_omitted": true,
+    "external_wan_validation": false,
+    "wan_dnat_enabled": false,
+    "baseline_evidence_unchanged": true
+  },
+  "source_artifacts": [
+    "windows-peer-http.json",
+    "windows-peer-proof.json"
+  ],
+  "native_windows": {
+    "checked_at_utc": "2026-10-23T04:07:14.5502297Z",
+    "run_id": "6c340353bd724584b63ab72df30c9313",
+    "tunnel_service_running": true,
+    "hub_host_route_present": true,
+    "web_host_route_present": true,
+    "all_http_passed": true,
+    "requests": [
+      {
+        "case": "grafana_health",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "correlation_id": "ozzylogik-windows-grafana_health-6c340353bd724584b63ab72df30c9313",
+        "request_id": null
+      },
+      {
+        "case": "normal",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "correlation_id": "ozzylogik-windows-normal-6c340353bd724584b63ab72df30c9313",
+        "request_id": "c3453c8d17f11316c62ab08b96635e9a"
+      },
+      {
+        "case": "sqli",
+        "status": 403,
+        "expected": 403,
+        "passed": true,
+        "correlation_id": "ozzylogik-windows-sqli-6c340353bd724584b63ab72df30c9313",
+        "request_id": "39602ae982fda467b54f23eb24e20ff2"
+      }
+    ]
+  },
+  "central_waf": {
+    "checked_at_utc": "2026-10-23T04:08:14.5956540Z",
+    "observed_project_source_ip": "10.77.42.4",
+    "normal_http": 200,
+    "sqli_http": 403,
+    "engine": "Enabled",
+    "crs_rule_ids": [
+      "920350",
+      "942100",
+      "949110"
+    ],
+    "correlation_ids": [
+      "ozzylogik-windows-normal-6c340353bd724584b63ab72df30c9313",
+      "ozzylogik-windows-sqli-6c340353bd724584b63ab72df30c9313"
+    ],
+    "request_id": "39602ae982fda467b54f23eb24e20ff2",
+    "audit_transaction_id": "39602ae982fda467b54f23eb24e20ff2",
+    "transaction_ids_match": true,
+    "record_counts": {
+      "normal_access": 1,
+      "sqli_access": 1,
+      "sqli_audit": 1
+    }
+  },
+  "limits": [
+    "This verifies a native Windows peer through the home LAN endpoint; it does not verify access from the internet",
+    "HTTP status alone is supplemented by the matched central CRS audit record"
+  ]
+}

@@ -1,0 +1,16 @@
+---
+- import_playbook: preflight.yml
+
+- name: Prepare administrative access and WireGuard while retaining bootstrap SSH
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    lab_phase: bootstrap
+    lab_lan_interface: '{{ ansible_facts.default_ipv4.interface }}'
+  vars_files:
+    - '{{ lab_controller_secret_file }}'
+  roles:
+    - baseline
+    - firewall
+    - wireguard

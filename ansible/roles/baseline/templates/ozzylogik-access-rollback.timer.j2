@@ -1,0 +1,11 @@
+[Unit]
+Description=Time limit for an uncommitted OZZYLOGIK access change
+
+[Timer]
+OnActiveSec={{ lab_access_rollback_seconds }}s
+AccuracySec=1s
+Unit=ozzylogik-access-rollback.service
+RemainAfterElapse=no
+
+[Install]
+WantedBy=timers.target

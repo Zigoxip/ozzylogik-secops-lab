@@ -1,0 +1,12 @@
+---
+lab_phase: ''
+lab_admin_user: labadmin
+lab_admin_additional_public_keys: []
+lab_vpn_interface: wg0
+lab_access_rollback_seconds: 900
+lab_console_recovery_verified: false
+lab_vpn_verified: false
+lab_apt_package_versions: {}
+lab_journal_system_max_use: 256M
+lab_journal_runtime_max_use: 64M
+lab_journal_retention: 7day

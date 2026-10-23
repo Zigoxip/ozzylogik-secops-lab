@@ -1,0 +1,174 @@
+---
+- name: Require a local Grafana password and supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.architecture == 'x86_64'
+      - lab_grafana_admin_password is defined
+      - lab_grafana_admin_password | length >= 20
+    quiet: true
+  no_log: true
+
+- name: Install native monitoring prerequisites
+  ansible.builtin.apt:
+    name: [ca-certificates, unzip, adduser, libfontconfig1, musl]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    policy_rc_d: 101
+
+- name: Create artifact cache and versioned Loki directory
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /var/cache/ozzylogik
+    - '/opt/loki/{{ lab_loki_version }}'
+
+- name: Download the checksum pinned Loki archive
+  ansible.builtin.get_url:
+    url: '{{ lab_loki_archive_url }}'
+    dest: '/var/cache/ozzylogik/loki-{{ lab_loki_version }}.zip'
+    checksum: '{{ lab_loki_archive_checksum }}'
+    mode: '0644'
+
+- name: Extract the pinned Loki binary
+  ansible.builtin.unarchive:
+    src: '/var/cache/ozzylogik/loki-{{ lab_loki_version }}.zip'
+    dest: '/opt/loki/{{ lab_loki_version }}'
+    remote_src: true
+    creates: '/opt/loki/{{ lab_loki_version }}/loki-linux-amd64'
+
+- name: Install Loki executable
+  ansible.builtin.copy:
+    src: '/opt/loki/{{ lab_loki_version }}/loki-linux-amd64'
+    dest: /usr/local/bin/loki
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart Loki
+
+- name: Create the Loki service account
+  ansible.builtin.user:
+    name: loki
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Create persistent Loki directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: loki
+    group: loki
+    mode: '0750'
+  loop:
+    - /etc/loki
+    - /var/lib/loki
+    - /var/lib/loki/chunks
+    - /var/lib/loki/rules
+    - /var/lib/loki/wal
+    - /var/lib/loki/compactor
+    - /var/lib/loki/tsdb-index
+    - /var/lib/loki/tsdb-cache
+
+- name: Install and validate the Loki configuration
+  ansible.builtin.template:
+    src: loki.yml.j2
+    dest: /etc/loki/loki.yml
+    owner: root
+    group: loki
+    mode: '0640'
+    validate: '/usr/local/bin/loki -verify-config=true -config.file=%s'
+  notify: Restart Loki
+
+- name: Install the Loki service
+  ansible.builtin.template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Loki
+
+- name: Download the checksum pinned Grafana package
+  ansible.builtin.get_url:
+    url: '{{ lab_grafana_deb_url }}'
+    dest: '/var/cache/ozzylogik/grafana-{{ lab_grafana_version }}.deb'
+    checksum: '{{ lab_grafana_deb_checksum }}'
+    mode: '0644'
+
+- name: Install Grafana without starting unconfigured defaults
+  ansible.builtin.apt:
+    deb: '/var/cache/ozzylogik/grafana-{{ lab_grafana_version }}.deb'
+    policy_rc_d: 101
+
+- name: Store the initial Grafana administrator password
+  ansible.builtin.copy:
+    content: '{{ lab_grafana_admin_password }}'
+    dest: /etc/grafana/ozzylogik-admin-password
+    owner: root
+    group: grafana
+    mode: '0640'
+  no_log: true
+  diff: false
+  notify: Restart Grafana
+
+- name: Configure Grafana
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: /etc/grafana/grafana.ini
+    owner: root
+    group: grafana
+    mode: '0640'
+  notify: Restart Grafana
+
+- name: Provision the Loki datasource
+  ansible.builtin.template:
+    src: loki-datasource.yml.j2
+    dest: /etc/grafana/provisioning/datasources/ozzylogik-loki.yml
+    owner: root
+    group: grafana
+    mode: '0640'
+  notify: Restart Grafana
+
+- name: Apply pending monitoring handlers before health checks
+  ansible.builtin.meta: flush_handlers
+
+- name: Provision the log overview dashboard
+  ansible.builtin.import_tasks: dashboard.yml
+  tags: [grafana_dashboard]
+
+- name: Enable and start Loki
+  ansible.builtin.systemd_service:
+    name: loki
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start Grafana
+  ansible.builtin.systemd_service:
+    name: grafana-server
+    enabled: true
+    state: started
+
+- name: Wait for Loki readiness on loopback
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3100/ready
+    status_code: 200
+  register: lab_loki_ready
+  retries: 20
+  delay: 3
+  until: lab_loki_ready.status == 200
+
+- name: Verify Grafana local health
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3000/api/health
+    status_code: 200
+  register: lab_grafana_ready
+  retries: 20
+  delay: 3
+  until: lab_grafana_ready.status == 200

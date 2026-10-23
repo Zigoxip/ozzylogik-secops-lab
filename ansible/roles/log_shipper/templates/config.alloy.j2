@@ -1,0 +1,54 @@
+// Managed by Ansible. Preserve JSON payloads; request IDs never become labels.
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+local.file_match "waf_access" {
+  path_targets = [{
+    "__path__"         = "{{ lab_web_log_dir }}/access.jsonl",
+    "job"              = "ozzylogik",
+    "instance"         = "{{ lab_log_instance }}",
+    "service_name"     = "nginx",
+    "log_type"         = "access",
+  }]
+  sync_period = "5s"
+}
+
+local.file_match "waf_audit" {
+  path_targets = [{
+    "__path__"         = "{{ lab_web_log_dir }}/audit.jsonl",
+    "job"              = "ozzylogik",
+    "instance"         = "{{ lab_log_instance }}",
+    "service_name"     = "modsecurity",
+    "log_type"         = "audit",
+  }]
+  sync_period = "5s"
+}
+
+loki.source.file "waf_access" {
+  targets       = local.file_match.waf_access.targets
+  forward_to    = [loki.write.ubu2.receiver]
+  tail_from_end = false
+}
+
+loki.source.file "waf_audit" {
+  targets       = local.file_match.waf_audit.targets
+  forward_to    = [loki.write.ubu2.receiver]
+  tail_from_end = false
+}
+
+loki.write "ubu2" {
+  endpoint {
+    url                    = "{{ lab_loki_url }}"
+    follow_redirects       = false
+    proxy_from_environment = false
+    max_backoff_retries    = 0
+  }
+  // In pinned Alloy 1.21 this feature requires the explicit experimental flag.
+  // Persistent positions alone do not guarantee delivery of an in-memory batch.
+  wal {
+    enabled         = true
+    max_segment_age = "{{ lab_alloy_wal_max_segment_age }}"
+  }
+}

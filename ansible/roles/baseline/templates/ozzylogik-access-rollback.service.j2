@@ -1,0 +1,8 @@
+[Unit]
+Description=Restore the saved OZZYLOGIK guest access configuration
+ConditionPathExists=/var/lib/ozzylogik/access-rollback/pending/state.json
+
+[Service]
+Type=oneshot
+UMask=0077
+ExecStart=/usr/local/sbin/ozzylogik-access-guard rollback

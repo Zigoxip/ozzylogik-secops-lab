@@ -1,0 +1,58 @@
+---
+- name: Reject an unintended inventory before connecting to guests
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Require exactly the two owned lab host names and roles
+      ansible.builtin.assert:
+        that:
+          - groups.get('all', []) | sort == ['ubu1', 'ubu2']
+          - groups.get('web', []) == ['ubu1']
+          - groups.get('monitoring', []) == ['ubu2']
+        quiet: true
+
+- name: Validate the intended lab targets and guest operating systems
+  hosts: all
+  gather_facts: true
+  become: true
+  vars:
+    lab_allowed_cloudinit_deprecation: "'user' of type string is deprecated in 22.2 and scheduled to be removed in 27.2. Use 'users' list instead."
+  tasks:
+    - name: Require the two named Ubuntu lab guests
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname in ['ubu1', 'ubu2']
+          - ansible_facts.distribution == 'Ubuntu'
+          - ansible_facts.distribution_version == '24.04'
+          - ansible_facts.architecture == 'x86_64'
+          - lab_hub_lan_ip is defined
+          - lab_web_lan_ip is defined
+          - lab_bootstrap_admin_lan_ip is defined
+          - lab_lan_cidr is defined
+          - lab_dns_ipv4 is defined
+          - lab_dhcp_server_ipv4 is defined
+        quiet: true
+
+    - name: Inspect cloud init completion without changing the guest
+      ansible.builtin.command: cloud-init status --wait --format=json
+      changed_when: false
+      register: lab_cloudinit_status
+      failed_when: lab_cloudinit_status.rc not in [0, 2]
+
+    - name: Parse the real cloud init status and warnings
+      ansible.builtin.set_fact:
+        lab_cloudinit_report: '{{ lab_cloudinit_status.stdout | from_json }}'
+
+    - name: Require completion without errors and permit only the known Proxmox deprecation
+      ansible.builtin.assert:
+        that:
+          - lab_cloudinit_report.status == 'done'
+          - lab_cloudinit_report.errors | length == 0
+          - lab_cloudinit_report.recoverable_errors.keys() | difference(['DEPRECATED']) | length == 0
+          - lab_cloudinit_report.recoverable_errors.get('DEPRECATED', []) | difference([lab_allowed_cloudinit_deprecation]) | length == 0
+        quiet: true
+
+    - name: Inspect the installed guest agent
+      ansible.builtin.command: systemctl is-active qemu-guest-agent
+      changed_when: false

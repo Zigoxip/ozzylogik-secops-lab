@@ -1,0 +1,708 @@
+{
+  "uid": "ozzylogik-waf",
+  "title": "OZZYLOGIK · Web & WAF",
+  "description": "Запросы к ubu1 и подтверждённые блокировки WAF по централизованным логам Loki. Не содержит метрик CPU/RAM.",
+  "tags": [
+    "ozzylogik",
+    "waf",
+    "logs"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "Открыть Explore",
+      "url": "/explore",
+      "targetBlank": false
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Веб и WAF — что происходит на стенде",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Запросы → Nginx / ModSecurity → Alloy → Loki**\n\nВыберите период справа сверху. Автопроверки с loopback исключены из счётчиков. **Блокировка WAF** подтверждается audit-событием `is_interrupted=true`, а не только HTTP 403. Обновление — каждые 30 секунд."
+      }
+    },
+    {
+      "id": 2,
+      "title": "Всего запросов",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Клиентские HTTP-запросы за выбранный период; автоматические запросы с loopback исключены.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "sum(count_over_time({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Успешные · HTTP 200",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Запросы с HTTP 200 за выбранный период.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "sum(count_over_time({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\" | status=\"200\" [$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Блокировки WAF",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Прерванные ModSecurity транзакции (transaction.is_interrupted=true). Одна audit-запись считается один раз, независимо от числа сработавших правил.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "sum(count_over_time({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"audit\"} | json blocked=\"transaction.is_interrupted\", client_ip=\"transaction.client_ip\" | __error__=\"\" | blocked=\"true\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__range])) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Уникальные IP",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Количество разных IP клиентов за выбранный период. Для тестового Windows VPN это 10.77.42.4.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "count(sum by (client_ip) (count_over_time({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__range]))) or vector(0)",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Запросы / минуту · HTTP-коды",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 16,
+        "h": 8
+      },
+      "description": "Средняя частота за минуту. Размер окна автоматически подбирается под выбранный период; карточки сверху показывают итоговое количество.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "sum by (status) (rate({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__interval])) * 60",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "HTTP {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 65,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisLabel": "запросов / мин",
+            "axisPlacement": "auto",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HTTP 200"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HTTP 403"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HTTP 404"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HTTP 500"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 7,
+      "title": "Блокировки WAF / минуту",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 8,
+        "h": 8
+      },
+      "description": "Средняя частота за минуту. Размер окна автоматически подбирается под выбранный период; карточки сверху показывают итоговое количество.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "sum(rate({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"audit\"} | json blocked=\"transaction.is_interrupted\", client_ip=\"transaction.client_ip\" | __error__=\"\" | blocked=\"true\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__interval])) * 60 or vector(0)",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "WAF"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "showPoints": "never",
+            "axisPlacement": "auto",
+            "axisLabel": "блокировок / мин",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "spanNulls": false
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "interval": "1m"
+    },
+    {
+      "id": 8,
+      "title": "HTTP-ответы за период",
+      "type": "bargauge",
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 8,
+        "h": 7
+      },
+      "description": "Количество ответов каждого HTTP-кода за выбранный период.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "sum by (status) (count_over_time({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__range]))",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "legendFormat": "HTTP {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Самые активные IP",
+      "type": "bargauge",
+      "gridPos": {
+        "x": 8,
+        "y": 15,
+        "w": 16,
+        "h": 7
+      },
+      "description": "До восьми IP с наибольшим количеством запросов за выбранный период. Адреса извлекаются при запросе, не становятся постоянными Loki labels.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "topk(8, sum by (client_ip) (count_over_time({job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"[$__range])))",
+          "queryType": "instant",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "legendFormat": "{{client_ip}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "valueMode": "color",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Последние клиентские запросы",
+      "type": "logs",
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 11
+      },
+      "description": "Раскройте запись, чтобы увидеть IP, HTTP-код, URI, request_id и correlation_id.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "{job=\"ozzylogik\",instance=\"ubu1\",log_type=\"access\"} | json status=\"status\", client_ip=\"client_ip\" | __error__=\"\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "",
+          "maxLines": 100,
+          "direction": "backward"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 11,
+      "title": "Последние блокировки WAF",
+      "type": "logs",
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 11
+      },
+      "description": "Только прерванные WAF транзакции. В деталях доступны сообщения CRS, ruleId, URI, IP и unique_id для сопоставления с Nginx.",
+      "datasource": {
+        "type": "loki",
+        "uid": "ozzylogik-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "ozzylogik-loki"
+          },
+          "expr": "{job=\"ozzylogik\",instance=\"ubu1\",log_type=\"audit\"} | json blocked=\"transaction.is_interrupted\", client_ip=\"transaction.client_ip\" | __error__=\"\" | blocked=\"true\" | client_ip!=\"127.0.0.1\" | client_ip!=\"::1\"",
+          "queryType": "range",
+          "instant": false,
+          "range": true,
+          "editorMode": "code",
+          "legendFormat": "",
+          "maxLines": 100,
+          "direction": "backward"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    }
+  ]
+}

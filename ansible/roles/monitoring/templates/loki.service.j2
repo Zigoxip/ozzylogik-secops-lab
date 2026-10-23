@@ -1,0 +1,23 @@
+[Unit]
+Description=Loki log storage for OZZYLOGIK lab
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=loki
+Group=loki
+ExecStart=/usr/local/bin/loki -config.file=/etc/loki/loki.yml
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=90
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/loki
+LimitNOFILE=65536
+MemoryMax=1536M
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

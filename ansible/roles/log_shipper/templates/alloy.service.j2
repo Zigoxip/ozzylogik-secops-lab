@@ -1,0 +1,29 @@
+[Unit]
+Description=OZZYLOGIK native Alloy log collector
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=simple
+User={{ lab_alloy_user }}
+Group={{ lab_alloy_group }}
+SupplementaryGroups={{ lab_log_group }}
+WorkingDirectory={{ lab_alloy_state_dir }}
+ExecStartPre=/usr/local/bin/alloy validate --config.format=alloy --stability.level=experimental {{ lab_alloy_config_dir }}/config.alloy
+ExecStart=/usr/local/bin/alloy run --config.format=alloy --stability.level=experimental --storage.path={{ lab_alloy_state_dir }} --server.http.listen-addr=127.0.0.1:12345 {{ lab_alloy_config_dir }}/config.alloy
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=45s
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ lab_alloy_state_dir }}
+ReadOnlyPaths={{ lab_web_log_dir }}
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+MemoryMax=384M
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=200
+[Install]
+WantedBy=multi-user.target

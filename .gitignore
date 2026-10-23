@@ -1,0 +1,38 @@
+# Local environment, infrastructure facts and actual inventories
+.local/
+ansible/inventory/hosts.yml
+ansible/inventory/bootstrap.yml
+ansible/group_vars/all/local.yml
+ansible/host_vars/
+.env
+.env.*
+!.env.example
+
+# Credentials and generated secret material
+*.pem
+*.key
+*.p12
+*.pfx
+id_ed25519*
+id_rsa*
+wg*.conf
+*.vault
+.vault-pass*
+vault-password*
+credentials*
+*Credential*.xml
+
+# Generated data and tooling
+.venv/
+__pycache__/
+*.pyc
+*.retry
+.ansible/
+ansible.log
+.pytest_cache/
+.DS_Store
+Thumbs.db
+
+# Keep sanitized evidence only after deliberate review
+evidence/raw/
+docs/evidence/raw/
