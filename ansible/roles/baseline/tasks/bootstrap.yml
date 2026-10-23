@@ -1,4 +1,5 @@
 ---
+# Используем переданный public key; приватный SSH-ключ на гостя не копируется.
 - name: Require a supplied public key without generating credentials
   ansible.builtin.assert:
     that:
@@ -16,6 +17,7 @@
     cache_valid_time: 3600
   loop: [sudo, openssh-server]
 
+# Модуль user описывает требуемое состояние пользователя, а не команду adduser.
 - name: Create the dedicated administrative account
   ansible.builtin.user:
     name: '{{ lab_admin_user }}'
@@ -26,6 +28,7 @@
     password_lock: true
     state: present
 
+# exclusive удаляет у этого пользователя ключи, которых нет в согласованном списке.
 - name: Install only the agreed SSH public keys for the lab account
   ansible.posix.authorized_key:
     user: '{{ lab_admin_user }}'
@@ -36,6 +39,8 @@
   no_log: true
   diff: false
 
+# Template подставляет переменные в .j2; validate проверяет файл до его установки.
+# Здесь labadmin получает полный sudo без пароля для автоматизации лаборатории.
 - name: Permit noninteractive administrative automation on these lab VMs
   ansible.builtin.template:
     src: sudoers.j2
@@ -58,6 +63,7 @@
     - {path: /etc/ssh/sshd_config.d, mode: '0755'}
     - {path: /etc/systemd/journald.conf.d, mode: '0755'}
 
+# Устанавливаем механизм страховки; сам снимок создаётся позже вызовом arm.
 - name: Install the guest-only transactional access guard
   ansible.builtin.template:
     src: access-guard.py.j2
@@ -67,6 +73,7 @@
     mode: '0700'
   diff: false
 
+# notify ставит handler в очередь только при изменении шаблона.
 - name: Install rollback service and timer
   ansible.builtin.template:
     src: '{{ item }}.j2'
@@ -88,5 +95,6 @@
     mode: '0644'
   notify: Restart bounded journal
 
+# flush_handlers выполняет накопленные handlers сейчас, до следующих ролей.
 - name: Make access guard units available before firewall and WireGuard
   ansible.builtin.meta: flush_handlers

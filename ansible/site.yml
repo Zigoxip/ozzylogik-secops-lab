@@ -1,19 +1,27 @@
 ---
+# Установка приложений ПОСЛЕ проверки VPN, secure и отдельного commit-access.
+# Тяжёлые загрузки не должны расходовать время ожидающего rollback доступа.
 - import_playbook: preflight.yml
 
+# Группа monitoring из inventory содержит только ubu2 — WG hub и сервер наблюдаемости.
 - name: Install native monitoring on the VPN hub
   hosts: monitoring
+  # gather_facts читает сведения VM; become даёт sudo для пакетов, файлов и systemd.
   become: true
   gather_facts: true
   vars_files:
+    # Секретный файл читается с контроллера; публичные общие параметры берутся из group_vars/all.
     - '{{ lab_controller_secret_file }}'
   roles:
+    # Вход в роль — roles/monitoring/tasks/main.yml, включая её handlers и конфигурации.
     - monitoring
 
+# Группа web содержит только ubu1. Сначала WAF создаёт логи, затем Alloy получает доступ к ним.
 - name: Install the web WAF and ship both log streams
   hosts: web
   become: true
   gather_facts: true
   roles:
+    # Оба имени запускают tasks/main.yml соответствующей роли; явный порядок сохраняем.
     - web_waf
     - log_shipper

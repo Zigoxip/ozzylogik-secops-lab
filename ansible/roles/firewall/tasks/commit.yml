@@ -1,4 +1,5 @@
 ---
+# True означает, что новые VPN/LAN/auth-проверки уже выполнены отдельно.
 - name: Require separate confirmation of new-session VPN and LAN negative tests
   ansible.builtin.assert:
     that:
@@ -8,6 +9,7 @@
       - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups.get('monitoring', []) else lab_web_wg_ip)
     fail_msg: Commit requires independent successful checks and the administrative VPN connection. No timeout is an approval.
 
+# Helper отвечает committed при удалении pending и unchanged, если снимка уже нет.
 - name: Commit the access transaction and stop its rollback timer
   ansible.builtin.command:
     argv: [/usr/local/sbin/ozzylogik-access-guard, commit]

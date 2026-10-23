@@ -1,5 +1,6 @@
 [Unit]
 Description=Restore the saved OZZYLOGIK guest access configuration
+{# Без ожидающего снимка службе нечего восстанавливать. #}
 ConditionPathExists=/var/lib/ozzylogik/access-rollback/pending/state.json
 
 [Service]

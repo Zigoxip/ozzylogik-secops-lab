@@ -1,15 +1,19 @@
 ---
+# Имена интерфейсов и порты подставляются в nftables-шаблон для каждого гостя.
 lab_vpn_interface: wg0
 lab_wireguard_port: 51820
 lab_loki_port: 3100
 lab_grafana_port: 3000
 lab_http_port: '{{ lab_web_http_port | default(80) }}'
+# Reviewer расширяет VPN-доступ; demo HTTP отдельно разрешает вход через LAN NIC.
 lab_reviewer_enabled: false
 lab_demo_http_enabled: false
 lab_demo_http_sources: ['0.0.0.0/0']
 lab_dhcpv6_enabled: false
 lab_apt_package_versions: {}
+# Это подтверждение внешних проверок доступа, а не замена самих проверок.
 lab_access_checks_passed: false
+# Приватные и специальные назначения блокируются после узких DHCP/DNS/WG-исключений.
 lab_private_egress_cidrs:
   - 0.0.0.0/8
   - 10.0.0.0/8

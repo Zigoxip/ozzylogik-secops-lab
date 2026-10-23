@@ -1,8 +1,12 @@
 ---
+# Значения относятся к Ubuntu-гостям; клиентские Windows/WSL-профили настраиваются отдельно.
 lab_vpn_interface: wg0
+# /29 — размер connected-сети; AllowedIPs каждого peer ниже ограничиваются /32.
 lab_vpn_prefixlen: 29
 lab_wireguard_port: 51820
 lab_wireguard_mtu: 1420
+# Keepalive поддерживает известный hub endpoint web-гостя даже без прикладного трафика.
 lab_wireguard_keepalive: 25
+# Это безопасный default; фактический inventory может включить отдельный peer.
 lab_reviewer_enabled: false
 lab_apt_package_versions: {}

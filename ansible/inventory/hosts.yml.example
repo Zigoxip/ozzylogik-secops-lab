@@ -1,5 +1,7 @@
 # Final VPN inventory. Copy to hosts.yml and replace the LAN placeholders.
 # Bootstrap uses a separate bootstrap.yml inventory with DHCP addresses.
+# Итоговый inventory для новых SSH-соединений labadmin через VPN; скопировать в локальный hosts.yml.
+# ansible_host — адрес подключения Ansible, а имя ubu1/ubu2 определяет роль и остаётся постоянным.
 all:
   children:
     web:
@@ -7,6 +9,7 @@ all:
         ubu1:
           ansible_host: 10.77.42.2
           # Optional Windows/reviewer peer: enable on BOTH hosts, not all.vars.
+          # Host override сильнее group_vars/all/main.yml; значение только в all.vars inventory слабее него.
           # lab_reviewer_enabled: true
     monitoring:
       hosts:
@@ -14,13 +17,16 @@ all:
           ansible_host: 10.77.42.1
           # lab_reviewer_enabled: true
   vars:
+    # Общие параметры подключения наследуют оба гостя. HOME относится к управляющему WSL.
     ansible_user: labadmin
     ansible_ssh_private_key_file: '{{ lookup("env", "HOME") }}/.ssh/ozzylogik-lab'
     ansible_ssh_common_args: '-o UserKnownHostsFile={{ lookup("env", "HOME") }}/.local/share/ozzylogik/known_hosts'
+    # Это placeholders домашней LAN. Заменить только в игнорируемом файле, не публиковать адреса.
     lab_bootstrap_admin_lan_ip: __WINDOWS_LAN_IP__
     lab_hub_lan_ip: __UBU2_DHCP_RESERVATION__
     lab_web_lan_ip: __UBU1_DHCP_RESERVATION__
     lab_lan_cidr: __HOME_LAN_CIDR__
     lab_dns_ipv4: [__HOME_DNS_IP__]
     lab_dhcp_server_ipv4: __DHCP_SERVER_IP__
+    # Фактический candidate читается prepare на web VM; случайную версию сюда не подставлять.
     lab_docker_package_version: __PIN_ACTUAL_NOBLE_APT_CANDIDATE__

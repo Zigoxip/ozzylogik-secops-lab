@@ -1,4 +1,5 @@
 ---
+# Ansible начинает роль с этого файла. Assert останавливает запуск при неверных входах.
 - name: Check baseline phase and account contract
   ansible.builtin.assert:
     that:
@@ -10,11 +11,13 @@
       - lab_access_rollback_seconds | int <= 3600
     fail_msg: Explicit bootstrap/secured/commit phase and valid account/guard settings are required.
 
+# import_tasks подключает другой список задач; when выбирает нужную фазу.
 - name: Prepare administrative account and recovery tooling
   ansible.builtin.import_tasks: bootstrap.yml
   when: lab_phase == 'bootstrap'
   tags: [baseline_bootstrap]
 
+# Подготовка учётной записи и запрет старых способов входа намеренно разделены.
 - name: Apply SSH restrictions only after separate VPN verification
   ansible.builtin.import_tasks: secure.yml
   when: lab_phase == 'secured'

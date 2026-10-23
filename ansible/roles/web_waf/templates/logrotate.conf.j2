@@ -1,15 +1,20 @@
+{# Это конфигурация logrotate НА VM, не задача Ansible: параметры ниже управляют тремя host-журналами. #}
 {{ lab_web_log_dir }}/access.jsonl {{ lab_web_log_dir }}/audit.jsonl {{ lab_web_log_dir }}/error.log {
+{# Проверка запускается timer каждые пять минут: daily задаёт обычный срок, maxsize допускает более раннюю ротацию. #}
     daily
     maxsize {{ lab_web_log_max_size }}
     rotate {{ lab_web_log_rotate_count }}
     missingok
     notifempty
+{# Старые архивы сжимаются, но один последний остаётся несжатым, чтобы читающий старый файл Alloy успел завершить чтение. #}
     compress
     delaycompress
     dateext
     dateformat -%Y%m%d-%H%M%S
+{# После rename создаётся новый файл: worker может писать, группа сборщика — читать; copytruncate не используется. #}
     create 0640 {{ lab_web_nginx_uid }} {{ lab_log_group }}
     sharedscripts
+{# Один postrotate на всю группу файлов: helper переоткрывает журналы через краткий restart WAF. #}
     postrotate
         /usr/local/sbin/ozzylogik-reopen-waf-logs
     endscript

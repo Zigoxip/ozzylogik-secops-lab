@@ -1,9 +1,11 @@
 ---
+# Этот handler применяет только свой sysctl-файл, не перечитывая все настройки системы.
 - name: Apply guest forwarding policy
   ansible.builtin.command:
     argv: [sysctl, -p, /etc/sysctl.d/90-ozzylogik-wireguard.conf]
   changed_when: true
 
+# Изменение WG-конфига требует restart интерфейса и может кратко прервать туннель.
 - name: Restart guest WireGuard
   ansible.builtin.systemd_service:
     name: 'wg-quick@{{ lab_vpn_interface }}'

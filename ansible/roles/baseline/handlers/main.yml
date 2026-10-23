@@ -1,4 +1,5 @@
 ---
+# Handlers вызываются через notify при изменении файлов; flush_handlers может вызвать их раньше конца play.
 - name: Reload systemd for access guard
   ansible.builtin.systemd_service:
     daemon_reload: true
@@ -8,6 +9,7 @@
     name: systemd-journald
     state: restarted
 
+# Reload перечитывает проверенную политику без намеренного разрыва текущего SSH.
 - name: Reload verified SSH policy
   ansible.builtin.systemd_service:
     name: ssh

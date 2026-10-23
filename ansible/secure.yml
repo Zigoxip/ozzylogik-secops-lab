@@ -1,14 +1,20 @@
 ---
+# Финальный переход обеих VM выполняется уже как labadmin по проверенным WG-IP.
+# Inventory/group_vars/host vars дают параметры узлов, vars_files — локальные секреты контроллера.
 - name: Apply final SSH and firewall policy through an already verified VPN path
   hosts: all
+  # sudo нужен для sshd, nftables и WG; gather_facts получает реальный LAN interface гостя.
   become: true
   gather_facts: true
   vars:
+    # secured удаляет временный bootstrap-доступ и включает конечную SSH/firewall-политику.
     lab_phase: secured
     lab_lan_interface: '{{ ansible_facts.default_ipv4.interface }}'
   vars_files:
     - '{{ lab_controller_secret_file }}'
   pre_tasks:
+    # Эти bool-гейты подтверждают УЖЕ проведённые VPN/recovery проверки, а не выполняют их сами.
+    # Assert дополнительно отклоняет неподходящего SSH-пользователя и LAN endpoint вместо WG-IP.
     - name: Require explicit evidence gates for the protected access transition
       ansible.builtin.assert:
         that:
@@ -18,6 +24,8 @@
           - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups['monitoring'] else lab_web_wg_ip)
         quiet: true
   roles:
+    # Вход в каждую роль — tasks/main.yml. Guard остаётся до независимых проб и commit-access.
+    # WG включён и здесь: изменение peer не требует возвращать небезопасную bootstrap-фазу.
     - baseline
     - firewall
     - wireguard

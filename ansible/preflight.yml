@@ -1,7 +1,9 @@
 ---
+# Первая проверка выполняется на контроллере до SSH к гостям: чужие узлы не должны попасть в play.
 - name: Reject an unintended inventory before connecting to guests
   hosts: localhost
   connection: local
+  # Факты localhost здесь не нужны: проверяется только структура загруженного inventory.
   gather_facts: false
   tasks:
     - name: Require exactly the two owned lab host names and roles
@@ -12,11 +14,14 @@
           - groups.get('monitoring', []) == ['ubu2']
         quiet: true
 
+# После проверки имён соединяемся с обеими VM; become даёт права для диагностики служб.
 - name: Validate the intended lab targets and guest operating systems
   hosts: all
   gather_facts: true
   become: true
   vars:
+    # Допускаем только эту точную известную deprecation, которую генерирует Proxmox cloud-init.
+    # Произвольные warnings и реальные errors не считаются приемлемыми.
     lab_allowed_cloudinit_deprecation: "'user' of type string is deprecated in 22.2 and scheduled to be removed in 27.2. Use 'users' list instead."
   tasks:
     - name: Require the two named Ubuntu lab guests
@@ -35,12 +40,14 @@
         quiet: true
 
     - name: Inspect cloud init completion without changing the guest
+      # Команда только ждёт/читает статус. rc=2 требует разбора JSON, а не безусловного игнорирования.
       ansible.builtin.command: cloud-init status --wait --format=json
       changed_when: false
       register: lab_cloudinit_status
       failed_when: lab_cloudinit_status.rc not in [0, 2]
 
     - name: Parse the real cloud init status and warnings
+      # set_fact сохраняет разобранный ответ в памяти Ansible для следующего assert.
       ansible.builtin.set_fact:
         lab_cloudinit_report: '{{ lab_cloudinit_status.stdout | from_json }}'
 
@@ -54,5 +61,6 @@
         quiet: true
 
     - name: Inspect the installed guest agent
+      # Активная служба не заменяет отдельную проверку привилегированного Guest Agent recovery.
       ansible.builtin.command: systemctl is-active qemu-guest-agent
       changed_when: false

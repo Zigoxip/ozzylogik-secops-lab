@@ -1,14 +1,21 @@
 ---
+# Настройки по умолчанию можно переопределить в inventory; проверки роли ограничивают
+# критичные значения проверенным вариантом стенда.
 lab_alloy_version: "1.21.1"
+# Номер версии выбирает выпуск, а SHA256 проверяет скачанные байты перед распаковкой.
 lab_alloy_archive_sha256: "83e7ad1663a1271af2f507ad1af53cdb0a0fbb19a1b661895bcc426af68f2774"
 lab_alloy_archive_url: "https://github.com/grafana/alloy/releases/download/v{{ lab_alloy_version }}/alloy-linux-amd64.zip"
 lab_alloy_user: alloy
 lab_alloy_group: alloy
 lab_alloy_config_dir: /etc/alloy
+# Постоянное состояние принадлежит пользователю Alloy: positions и WAL переживают restart.
 lab_alloy_state_dir: /var/lib/alloy
+# Возраст сегмента WAL не является гарантированным сроком автономной доставки без потерь.
 lab_alloy_wal_max_segment_age: 1h
 lab_loki_url: "http://10.77.42.1:3100/loki/api/v1/push"
+# inventory_hostname — имя узла Ansible (ubu1); оно станет устойчивой меткой потока логов.
 lab_log_instance: "{{ inventory_hostname }}"
+# Путь/GID должны совпадать с web_waf: сборщик читает файлы, созданные той ролью.
 lab_web_log_dir: /var/log/ozzylogik/nginx
 lab_log_group: lab-logs
 lab_log_group_gid: 2800

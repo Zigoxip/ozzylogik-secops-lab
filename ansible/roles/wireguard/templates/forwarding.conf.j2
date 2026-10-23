@@ -1,3 +1,4 @@
 # Only the WireGuard hub forwards; IPv6 forwarding is not used in this lab.
+{# Hub пересылает пакеты между peers; конкретные разрешённые потоки определяет firewall. #}
 net.ipv4.ip_forward = {{ 1 if inventory_hostname in groups.get('monitoring', []) else 0 }}
 net.ipv6.conf.all.forwarding = 0

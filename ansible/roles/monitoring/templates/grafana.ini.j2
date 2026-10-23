@@ -1,9 +1,11 @@
+{# Конфигурация Grafana на VM: постоянная база/плагины отдельно от управляемых Ansible provisioning-файлов. #}
 [paths]
 data = /var/lib/grafana
 logs = /var/log/grafana
 plugins = /var/lib/grafana/plugins
 provisioning = /etc/grafana/provisioning
 
+{# HTTP доступен через разрешённый firewall VPN-путь; сама роль monitoring правила доступа не создаёт. #}
 [server]
 protocol = http
 http_addr = 0.0.0.0
@@ -16,6 +18,7 @@ check_for_plugin_updates = false
 
 [security]
 admin_user = {{ lab_grafana_admin_user }}
+{# Пароль читает Grafana из закрытого файла при создании администратора; его значение в шаблоне не хранится. #}
 admin_password = $__file{/etc/grafana/ozzylogik-admin-password}
 disable_gravatar = true
 cookie_samesite = strict
@@ -23,6 +26,7 @@ cookie_samesite = strict
 [users]
 allow_sign_up = false
 
+{# Выключены самостоятельная регистрация и анонимный вход: пользователь проходит обычную авторизацию Grafana. #}
 [auth.anonymous]
 enabled = false
 

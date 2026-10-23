@@ -1,4 +1,6 @@
 ---
+# Эта роль устанавливает Loki (хранилище логов) и Grafana (интерфейс запросов/дашбордов)
+# непосредственно в Linux. no_log скрывает значение секретной переменной даже при ошибке.
 - name: Require a local Grafana password and supported architecture
   ansible.builtin.assert:
     that:
@@ -28,6 +30,7 @@
     - '/opt/loki/{{ lab_loki_version }}'
 
 - name: Download the checksum pinned Loki archive
+  # get_url скачивает на управляемую VM и проверяет SHA256 до использования архива.
   ansible.builtin.get_url:
     url: '{{ lab_loki_archive_url }}'
     dest: '/var/cache/ozzylogik/loki-{{ lab_loki_version }}.zip'
@@ -35,6 +38,7 @@
     mode: '0644'
 
 - name: Extract the pinned Loki binary
+  # remote_src: true — архив уже на VM; creates не даёт распаковывать ту же версию снова.
   ansible.builtin.unarchive:
     src: '/var/cache/ozzylogik/loki-{{ lab_loki_version }}.zip'
     dest: '/opt/loki/{{ lab_loki_version }}'
@@ -59,6 +63,8 @@
     shell: /usr/sbin/nologin
 
 - name: Create persistent Loki directories
+  # Конфигурация в /etc, данные в /var/lib: повторная установка не должна стирать
+  # сохранённые журналы, индексы и WAL. Пишет отдельный системный пользователь loki.
   ansible.builtin.file:
     path: '{{ item }}'
     state: directory
@@ -76,6 +82,8 @@
     - /var/lib/loki/tsdb-cache
 
 - name: Install and validate the Loki configuration
+  # template: src берётся из templates/ на контроллере, vars подставляются в dest на VM.
+  # validate проверяет временный кандидат до замены; notify перезапускает только при diff.
   ansible.builtin.template:
     src: loki.yml.j2
     dest: /etc/loki/loki.yml
@@ -102,11 +110,15 @@
     mode: '0644'
 
 - name: Install Grafana without starting unconfigured defaults
+  # apt устанавливает локально скачанный .deb; policy_rc_d блокирует автоматический
+  # первый запуск, пока не готовы наши настройки и пароль.
   ansible.builtin.apt:
     deb: '/var/cache/ozzylogik/grafana-{{ lab_grafana_version }}.deb'
     policy_rc_d: 101
 
 - name: Store the initial Grafana administrator password
+  # copy хранит секрет в отдельном закрытом файле; no_log/diff:false не дают ему попасть
+  # в вывод Ansible. Это первоначальный пароль: замена файла не меняет существующего user в БД.
   ansible.builtin.copy:
     content: '{{ lab_grafana_admin_password }}'
     dest: /etc/grafana/ozzylogik-admin-password
@@ -127,6 +139,8 @@
   notify: Restart Grafana
 
 - name: Provision the Loki datasource
+  # Provisioning автоматически создаёт подключение Grafana→Loki вместо ручной настройки UI.
+  # Loki находится на этой же VM, поэтому datasource использует loopback, а не внешний адрес.
   ansible.builtin.template:
     src: loki-datasource.yml.j2
     dest: /etc/grafana/provisioning/datasources/ozzylogik-loki.yml
@@ -136,13 +150,17 @@
   notify: Restart Grafana
 
 - name: Apply pending monitoring handlers before health checks
+  # flush_handlers применяет уже изменённые настройки до проверок и следующей части роли.
   ansible.builtin.meta: flush_handlers
 
 - name: Provision the log overview dashboard
+  # import_tasks включает отдельный список задач; тег позволяет вызвать только dashboard-часть.
+  # Её файлы — источник воспроизводимости: UI-правки Grafana нужно экспортировать обратно в Git.
   ansible.builtin.import_tasks: dashboard.yml
   tags: [grafana_dashboard]
 
 - name: Enable and start Loki
+  # enabled — запуск при загрузке VM; started — обеспечить работу без лишнего restart.
   ansible.builtin.systemd_service:
     name: loki
     enabled: true
@@ -156,6 +174,8 @@
     state: started
 
 - name: Wait for Loki readiness on loopback
+  # retries/delay/until дают службе время запуститься. HTTP 200 доказывает готовность API,
+  # но не подтверждает доставку конкретного события или фактическое семисуточное удаление.
   ansible.builtin.uri:
     url: http://127.0.0.1:3100/ready
     status_code: 200

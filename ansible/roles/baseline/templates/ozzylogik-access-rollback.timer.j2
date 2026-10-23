@@ -1,9 +1,11 @@
 [Unit]
 Description=Time limit for an uncommitted OZZYLOGIK access change
 
+{# OnActiveSec начинает отсчёт при активации таймера, а не после завершения playbook. #}
 [Timer]
 OnActiveSec={{ lab_access_rollback_seconds }}s
 AccuracySec=1s
+{# По истечении срока systemd локально вызывает службу отката, даже без SSH. #}
 Unit=ozzylogik-access-rollback.service
 RemainAfterElapse=no
 

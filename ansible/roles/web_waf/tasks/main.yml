@@ -1,4 +1,6 @@
 ---
+# Задачи идут сверху вниз. assert останавливает применение, если входные данные
+# не соответствуют проверенному дизайну; ОС/архитектура взяты из gathered facts.
 - name: Validate WAF platform and immutable image input
   ansible.builtin.assert:
     that:
@@ -12,6 +14,8 @@
     fail_msg: "Pin the real docker.io apt candidate in lab_docker_package_version before deployment; this role expects the approved amd64 host-network HTTP/80 design."
 
 - name: Install the pinned Docker package and host log rotation support
+  # apt приводит пакеты к нужному состоянию. policy_rc_d: 101 запрещает пакету
+  # автоматически запустить daemon до установки нашей конфигурации.
   ansible.builtin.apt:
     name:
       - "{{ lab_docker_package }}={{ lab_docker_package_version }}"
@@ -32,6 +36,9 @@
     mode: '0755'
 
 - name: Disable unused bridge networking and Docker forwarding changes
+  # copy с content создаёт файл прямо из YAML. validate проверяет временную копию
+  # перед заменой рабочей; notify вызовет handler только при изменении содержимого.
+  # Эти daemon-настройки подходят выделенному host-network WAF, не любому Docker-хосту.
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     content: |
@@ -49,6 +56,7 @@
   notify: Restart dedicated Docker daemon
 
 - name: Apply Docker networking policy before reconciling the WAF container
+  # Обычно handlers ждут конца play; здесь их нужно применить раньше запуска контейнера.
   ansible.builtin.meta: flush_handlers
 
 - name: Enable Docker on the dedicated web VM
@@ -58,6 +66,7 @@
     state: started
 
 - name: Create the shared read-only log access group
+  # Единый GID согласует права host-файлов с отдельным пользователем сборщика Alloy.
   ansible.builtin.group:
     name: "{{ lab_log_group }}"
     gid: "{{ lab_log_group_gid }}"
@@ -93,6 +102,8 @@
     state: directory
 
 - name: Create log files without truncating existing records
+  # file/state: touch создаёт отсутствующий файл, не стирая содержимое существующего.
+  # preserve не меняет времена при каждом прогоне и помогает сохранить changed=0.
   ansible.builtin.file:
     path: "{{ lab_web_log_dir }}/{{ item }}"
     owner: "{{ lab_web_nginx_uid }}"
@@ -107,6 +118,8 @@
     - error.log
 
 - name: Install the Nginx static WAF configuration
+  # template читает src из templates/ этой роли на контроллере, подставляет переменные
+  # Jinja и записывает результат в dest на VM. В контейнер попадёт уже готовый файл.
   ansible.builtin.template:
     src: nginx.conf.j2
     dest: "{{ lab_web_config_dir }}/nginx.conf.template"
@@ -116,6 +129,7 @@
   notify: Restart the WAF container
 
 - name: Install the lab demonstration page
+  # Статика подключена в контейнер каталогом: изменение HTML видно без restart Nginx.
   ansible.builtin.template:
     src: index.html.j2
     dest: "{{ lab_web_site_dir }}/index.html"
@@ -132,6 +146,8 @@
     mode: "0644"
 
 - name: Pull the immutable official OWASP CRS image
+  # Модуль community.docker общается с локальным Docker socket НА VM.
+  # pull: not_present не загружает уже имеющийся закреплённый образ повторно.
   community.docker.docker_image_pull:
     docker_host: unix:///var/run/docker.sock
     name: "{{ lab_web_image }}"
@@ -139,6 +155,8 @@
     pull: not_present
 
 - name: Verify the pinned image nginx worker UID
+  # Короткий контейнер без сети проверяет UID из образа. Это проверка, а не изменение
+  # целевого состояния, поэтому changed_when: false; следующий assert сверяет права логов.
   ansible.builtin.command:
     argv:
       - /usr/bin/docker
@@ -162,6 +180,8 @@
   when: not ansible_check_mode
 
 - name: Start Nginx with ModSecurity and OWASP CRS
+  # docker_container описывает желаемое состояние целиком: образ, сеть, mounts и лимиты.
+  # host network сохраняет путь через INPUT гостевого firewall; published ports не нужны.
   community.docker.docker_container:
     docker_host: unix:///var/run/docker.sock
     name: "{{ lab_web_container_name }}"
@@ -170,6 +190,8 @@
     restart_policy: unless-stopped
     network_mode: host
     user: "0:0"
+    # Master связывает порт 80, затем Nginx workers переходят к пользователю nginx.
+    # Сбрасываем все capabilities и возвращаем только необходимые этому образу.
     # Master binds HTTP/80; nginx workers drop to their unprivileged image user.
     cap_drop:
       - ALL
@@ -190,6 +212,8 @@
       max-size: 10m
       max-file: "3"
     env:
+      # Переменные образа включают блокировку и JSON audit. RelevantOnly не означает,
+      # что каждая audit-запись является блокировкой: бывают и неблокирующие предупреждения.
       # The upstream low-port preflight reads these unused default-template ports.
       # Our full nginx.conf template is the sole listener authority (HTTP/80).
       PORT: "8080"
@@ -208,10 +232,12 @@
       ANOMALY_INBOUND: "5"
       ANOMALY_OUTBOUND: "4"
     volumes:
+      # Слева путь на VM, справа путь в контейнере. ro — только чтение; rw нужен логам.
       - "{{ lab_web_config_dir }}/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro"
       - "{{ lab_web_site_dir }}:/srv/ozzylogik/site:ro"
       - "{{ lab_web_log_dir }}:{{ lab_web_log_dir }}:rw"
     healthcheck:
+      # Проверяем именно наш реальный HTTP/80, а не неиспользуемые порты образа по умолчанию.
       test:
         - CMD
         - curl
@@ -227,6 +253,8 @@
       start_period: 30s
 
 - name: Install graceful log reopen helper
+  # Историческое имя задачи сохранено: фактически helper кратко перезапускает WAF,
+  # потому что HUP в закреплённой сборке не переоткрывает serial audit-файл ModSecurity.
   ansible.builtin.template:
     src: reopen-waf-logs.sh.j2
     dest: /usr/local/sbin/ozzylogik-reopen-waf-logs
@@ -236,6 +264,8 @@
   tags: [waf_log_rotation]
 
 - name: Install dedicated WAF log rotation policy
+  # Ротация по rename/create сохраняет читаемый Alloy старый открытый файл; copytruncate
+  # не используется. Число архивов/размер и расписание заданы отдельными настройками.
   ansible.builtin.template:
     src: logrotate.conf.j2
     dest: "{{ lab_web_config_dir }}/logrotate.conf"
@@ -255,6 +285,8 @@
   tags: [waf_log_rotation]
 
 - name: Install the WAF log rotation timer
+  # Timer каждые пять минут запускает oneshot service, который вызывает logrotate.
+  # Сам timer ничего не удаляет и не гарантирует жёсткий предел размера между проверками.
   ansible.builtin.copy:
     dest: /etc/systemd/system/ozzylogik-waf-logrotate.timer
     content: |
@@ -284,6 +316,8 @@
   ansible.builtin.meta: flush_handlers
 
 - name: Inspect the declared WAF container after handlers
+  # Успех создания контейнера ещё не доказывает правильность runtime: ниже отдельно
+  # проверяются сеть/mounts/образ, синтаксис Nginx и реальный ответ health endpoint.
   community.docker.docker_container_info:
     docker_host: unix:///var/run/docker.sock
     name: '{{ lab_web_container_name }}'

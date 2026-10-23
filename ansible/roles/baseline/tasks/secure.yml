@@ -1,4 +1,5 @@
 ---
+# Ужесточаем SSH только из уже проверенного VPN-сеанса обычного администратора.
 - name: Require an already verified VPN connection and console recovery
   ansible.builtin.assert:
     that:
@@ -8,6 +9,8 @@
       - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups.get('monitoring', []) else lab_web_wg_ip)
     fail_msg: Secured phase must use a new labadmin VPN connection after independent VPN and console checks.
 
+# Локальный check_mode этой задачи сравнивает шаблон без записи файла.
+# register сохраняет результат, в том числе changed, для следующих условий.
 - name: Check whether the SSH policy would change
   ansible.builtin.template:
     src: ssh-policy.conf.j2
@@ -19,6 +22,7 @@
   diff: false
   register: lab_ssh_policy_candidate
 
+# Страховка нужна перед изменением; changed_when описывает реальный итог helper.
 - name: Guard the previous SSH/WireGuard/firewall configuration
   ansible.builtin.command:
     argv: [/usr/local/sbin/ozzylogik-access-guard, arm]
@@ -28,6 +32,7 @@
     - lab_ssh_policy_candidate.changed
     - not ansible_check_mode
 
+# block объединяет установку и проверки; rescue ниже запрашивает откат при ошибке.
 - name: Install and verify the effective SSH policy
   block:
     - name: Install SSH policy without reloading an unvalidated configuration
@@ -47,6 +52,7 @@
       changed_when: false
       when: not ansible_check_mode
 
+    # sshd -T показывает итог с учётом include и Match, а не только нашего файла.
     - name: Inspect effective SSH settings for admin and root VPN contexts
       ansible.builtin.command:
         argv:
@@ -74,6 +80,7 @@
         label: '{{ item.item }}'
       when: not ansible_check_mode
 
+    # Reload выполняется через handler после успешной проверки полной конфигурации.
     - name: Activate only the verified policy while rollback remains armed
       ansible.builtin.meta: flush_handlers
   rescue:

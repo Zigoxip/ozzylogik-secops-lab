@@ -1,11 +1,16 @@
 ---
+# Defaults — значения по умолчанию; inventory может переопределить их для стенда.
+# Пустая фаза заставляет явно выбрать bootstrap, secured или commit.
 lab_phase: ''
 lab_admin_user: labadmin
 lab_admin_additional_public_keys: []
 lab_vpn_interface: wg0
+# 900 секунд отсчитываются от первого arm; повторный arm срок не продлевает.
 lab_access_rollback_seconds: 900
+# Эти флаги подтверждают уже выполненные проверки, а не выполняют их сами.
 lab_console_recovery_verified: false
 lab_vpn_verified: false
+# Необязательные точные версии пакетов и ограничения системного журнала.
 lab_apt_package_versions: {}
 lab_journal_system_max_use: 256M
 lab_journal_runtime_max_use: 64M

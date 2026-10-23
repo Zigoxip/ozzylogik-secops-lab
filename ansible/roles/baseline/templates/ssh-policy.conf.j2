@@ -1,8 +1,11 @@
+{# Учебный комментарий остаётся в .j2 и не меняет установленный конфиг. #}
 # Installed only in the secured phase after a new VPN login succeeds.
+{# Запрещаем прямой root-вход и оба интерактивных способа SSH-аутентификации. #}
 PermitRootLogin no
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PubkeyAuthentication yes
 AuthenticationMethods publickey
 PermitEmptyPasswords no
+{# VPN-ключ разрешает туннель; для SSH отдельно нужны этот пользователь и его SSH-ключ. #}
 AllowUsers {{ lab_admin_user }}

@@ -1,3 +1,4 @@
+{# Loki принимает записи Alloy и запросы Grafana. Его доступ ограничивает guest firewall; собственной HTTP-аутентификации здесь нет. #}
 auth_enabled: false
 server:
   http_listen_address: 0.0.0.0
@@ -5,6 +6,7 @@ server:
   grpc_listen_address: 127.0.0.1
   grpc_listen_port: 9096
   log_level: info
+{# Одиночный локальный Loki: нет реплик на других узлах; постоянные данные живут в /var/lib/loki. #}
 common:
   instance_addr: 127.0.0.1
   path_prefix: /var/lib/loki
@@ -12,6 +14,7 @@ common:
   ring:
     kvstore:
       store: inmemory
+{# TSDB/schema v13 задаёт формат индекса, filesystem — локальное хранение, не удалённое object storage. #}
 schema_config:
   configs:
     - from: '2024-01-01'
@@ -27,10 +30,12 @@ storage_config:
     cache_location: /var/lib/loki/tsdb-cache
   filesystem:
     directory: /var/lib/loki/chunks
+{# Собственный WAL Loki помогает восстановить приём после restart; это отдельный механизм от WAL сборщика Alloy. #}
 ingester:
   wal:
     enabled: true
     dir: /var/lib/loki/wal
+{# Compactor обслуживает индексы и удаление по retention; удаление отложено, не происходит мгновенно по границе срока. #}
 compactor:
   working_directory: /var/lib/loki/compactor
   compaction_interval: 10m
@@ -39,11 +44,13 @@ compactor:
   retention_delete_worker_count: 2
   delete_request_store: filesystem
 limits_config:
+{# Ansible подставляет срок хранения из defaults/inventory; настроенный срок ещё не доказывает наблюдённое удаление. #}
   retention_period: {{ lab_loki_retention }}
   ingestion_rate_mb: 2
   ingestion_burst_size_mb: 4
   allow_structured_metadata: true
   volume_enabled: true
+{# Ограничения параллельности и cache соответствуют небольшому домашнему стенду. #}
 querier:
   max_concurrent: 2
 query_range:

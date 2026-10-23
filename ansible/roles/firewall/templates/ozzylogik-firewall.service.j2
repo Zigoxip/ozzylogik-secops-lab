@@ -2,6 +2,7 @@
 Description=OZZYLOGIK guest nftables policy (owned table only)
 DefaultDependencies=no
 After=local-fs.target nftables.service
+{# Правила при загрузке гостя должны появиться до сети и запуска WireGuard. #}
 Before=network-pre.target
 Before=wg-quick@{{ lab_vpn_interface }}.service
 Wants=network-pre.target
@@ -11,6 +12,7 @@ Before=shutdown.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+{# Systemd загружает уже созданный Ansible конфиг тем же проверяющим loader. #}
 ExecStart=/usr/local/sbin/ozzylogik-nft-load --apply /etc/nftables.d/ozzylogik.nft
 ExecReload=/usr/local/sbin/ozzylogik-nft-load --apply /etc/nftables.d/ozzylogik.nft
 # No ExecStop: stopping a unit must not silently open the guest firewall.

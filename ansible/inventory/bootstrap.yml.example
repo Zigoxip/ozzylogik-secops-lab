@@ -1,4 +1,6 @@
 ---
+# Отдельный начальный inventory: cloud-init ubuntu и DHCP LAN-адреса только двух новых VM.
+# После проверки VPN используется hosts.yml с labadmin/WG-IP; -u не перекрывает ansible_user inventory.
 all:
   children:
     web:
@@ -10,13 +12,16 @@ all:
         ubu2:
           ansible_host: __UBU2_DHCP_ADDRESS__
   vars:
+    # Ключи и known_hosts остаются на контроллере; пример содержит только HOME-relative пути.
     ansible_user: ubuntu
     ansible_ssh_private_key_file: '{{ lookup("env", "HOME") }}/.ssh/ozzylogik-lab'
     ansible_ssh_common_args: '-o UserKnownHostsFile={{ lookup("env", "HOME") }}/.local/share/ozzylogik/known_hosts'
+    # Реальные DHCP/LAN значения заполняются только в локальной копии bootstrap.yml, исключённой из Git.
     lab_bootstrap_admin_lan_ip: __WINDOWS_LAN_IP__
     lab_hub_lan_ip: __UBU2_DHCP_ADDRESS__
     lab_web_lan_ip: __UBU1_DHCP_ADDRESS__
     lab_lan_cidr: __HOME_LAN_CIDR__
     lab_dns_ipv4: [__HOME_DNS_IP__]
     lab_dhcp_server_ipv4: __DHCP_SERVER_IP__
+    # Pin Docker получают из реального apt candidate во время prepare перед web role.
     lab_docker_package_version: __PIN_ACTUAL_NOBLE_APT_CANDIDATE__

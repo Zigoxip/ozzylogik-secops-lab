@@ -1,4 +1,6 @@
 ---
+# notify ставит этот handler в очередь только при изменении задачи; повторные notify
+# объединяются. daemon_reload нужен, если изменилось описание службы systemd.
 - name: Restart the log collector
   ansible.builtin.systemd_service:
     name: ozzylogik-alloy

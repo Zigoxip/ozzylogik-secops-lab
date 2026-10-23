@@ -1,4 +1,5 @@
 ---
+# Перечитываем описание unit; действующий ruleset загружает задача --apply, не этот handler.
 - name: Reload systemd for guest firewall
   ansible.builtin.systemd_service:
     daemon_reload: true

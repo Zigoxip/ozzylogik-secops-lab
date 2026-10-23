@@ -1,12 +1,17 @@
 ---
+# Завершение защищённого перехода на обеих VM; применять после свежих разрешённых и запрещённых проб.
 - name: Cancel rollback only after fresh positive and negative access checks
   hosts: all
+  # Читаем факты гостя, операции с guard/timer выполняем через sudo.
   become: true
   gather_facts: true
   vars:
+    # Фаза commit выбирает в firewall снятие rollback, а не очередное применение правил.
     lab_phase: commit
     lab_lan_interface: '{{ ansible_facts.default_ipv4.interface }}'
   pre_tasks:
+    # lab_access_checks_passed — подтверждение результатов внешних проверок оператором.
+    # Этот assert сам не открывает VPN/LAN соединения и не проверяет root/password SSH.
     - name: Require successful external acceptance checks
       ansible.builtin.assert:
         that:
@@ -14,4 +19,5 @@
           - ansible_user == lab_admin_user
         quiet: true
   roles:
+    # Единственная роль читает свой tasks/main.yml и завершает уже проверенную access-транзакцию.
     - firewall

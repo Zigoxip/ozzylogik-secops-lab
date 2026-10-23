@@ -1,4 +1,5 @@
 ---
+# Assert проверяет входные параметры до записи конфигов или изменения правил.
 - name: Check the agreed firewall inputs and recovery path
   ansible.builtin.assert:
     that:
@@ -32,6 +33,7 @@
     group: root
     mode: '0700'
 
+# check_mode сравнивает будущие файлы, register сохраняет результаты всех элементов loop.
 - name: Inspect candidate lab firewall files without applying them
   ansible.builtin.template:
     src: '{{ item.src }}'
@@ -47,6 +49,7 @@
   register: lab_firewall_candidates
   diff: false
 
+# changed_when:false отличает чтение состояния от задачи, которая что-то изменила.
 - name: Inspect only the owned runtime table
   ansible.builtin.command:
     argv: [nft, list, table, inet, ozzylogik]
@@ -71,6 +74,7 @@
          lab_firewall_runtime.rc != 0 or
          lab_firewall_service.results[0].rc != 0 or lab_firewall_service.results[1].stdout != 'enabled' }}
 
+# При реальном изменении сначала arm; существующий pending не продлевает таймер.
 - name: Arm the existing rollback guard before changing access
   ansible.builtin.command:
     argv: [/usr/local/sbin/ozzylogik-access-guard, arm]
@@ -89,6 +93,7 @@
     mode: '0750'
     validate: /bin/bash -n %s
 
+# .j2 превращается в /etc/nftables.d/ozzylogik.nft; validate ещё не применяет правила.
 - name: Install the checked phase-specific ruleset
   ansible.builtin.template:
     src: ozzylogik.nft.j2
@@ -108,9 +113,12 @@
     mode: '0644'
   notify: Reload systemd for guest firewall
 
+# Notify перечитывает unit через handler; flush выполняет его до загрузки правил.
 - name: Load the persistence unit before applying the candidate
   ansible.builtin.meta: flush_handlers
 
+# Именно --apply меняет действующие nftables-правила; одной записи файла недостаточно.
+# when пропускает эту операцию, если управляемое состояние не требует изменения.
 - name: Atomically replace only the owned table while rollback remains armed
   ansible.builtin.command:
     argv: [/usr/local/sbin/ozzylogik-nft-load, --apply, /etc/nftables.d/ozzylogik.nft]

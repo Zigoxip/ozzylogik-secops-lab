@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """Validate a rendered config and matching local key without touching the network."""
+# Этот скрипт читает временный конфиг перед установкой и не создаёт сетевой интерфейс.
 import base64
 import ipaddress
 from pathlib import Path
@@ -8,11 +9,13 @@ import sys
 
 
 def key(value):
+    # WireGuard-ключ должен декодироваться из base64 ровно в 32 байта.
     if len(base64.b64decode(value, validate=True)) != 32:
         raise ValueError('Invalid key length')
 
 
 def main():
+    # Разбираем только ожидаемые секции и директивы, отвергая дубликаты.
     sections = []
     local_public = None
     for raw in Path(sys.argv[1]).read_text().splitlines():
@@ -43,6 +46,7 @@ def main():
     key(interface['PrivateKey'])
     key(local_public)
     derived = subprocess.run(['wg', 'pubkey'], input=interface['PrivateKey'] + '\n', text=True, capture_output=True, check=True)
+    # Сравнение выполняется локально; private key не включается в текст ошибки.
     if derived.stdout.strip() != local_public:
         raise ValueError('Local private/public key mismatch')
     seen_keys = {local_public}
@@ -57,6 +61,7 @@ def main():
             raise ValueError('Duplicate peer key')
         seen_keys.add(peer['PublicKey'])
         for value in peer['AllowedIPs'].split(','):
+            # Разрешаем только отдельные /32 внутри VPN, без LAN/default маршрутов.
             network = ipaddress.ip_network(value.strip(), strict=True)
             if network.version != 4 or network.prefixlen != 32 or network.network_address not in address.network:
                 raise ValueError('Only individual VPN addresses may be routed')

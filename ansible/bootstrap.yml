@@ -1,16 +1,23 @@
 ---
+# Начальная настройка обеих VM через отдельный LAN inventory с cloud-init пользователем ubuntu.
+# До любых ролей проверяем состав inventory, Ubuntu, cloud-init и Guest Agent.
 - import_playbook: preflight.yml
 
 - name: Prepare administrative access and WireGuard while retaining bootstrap SSH
   hosts: all
+  # become повышает права на госте через sudo; факты читают его ОС и default IPv4 interface.
   become: true
   gather_facts: true
   vars:
+    # Фаза сохраняет временный bootstrap SSH; окончательная политика применяется отдельным secure.
     lab_phase: bootstrap
     lab_lan_interface: '{{ ansible_facts.default_ipv4.interface }}'
   vars_files:
+    # Путь приходит из group_vars; сам файл читается на контроллере вне Git, не на гостевой VM.
     - '{{ lab_controller_secret_file }}'
   roles:
+    # Порядок важен: администратор и guard, затем firewall, затем WireGuard.
+    # Каждая запись запускает tasks/main.yml своей роли; роли выбирают ветку по lab_phase.
     - baseline
     - firewall
     - wireguard

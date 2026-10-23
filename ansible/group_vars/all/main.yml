@@ -1,5 +1,8 @@
 ---
+# Общие несекретные переменные для обеих VM; Ansible загружает group_vars/all автоматически.
+# Фактические LAN-параметры и host overrides живут в игнорируемом локальном inventory.
 lab_admin_user: labadmin
+# Проектная VPN: hub=.1, web=.2, WSL admin=.3, отдельный Windows/reviewer peer=.4.
 lab_vpn_interface: wg0
 lab_vpn_cidr: 10.77.42.0/29
 lab_vpn_prefixlen: 29
@@ -11,9 +14,14 @@ lab_wireguard_port: 51820
 lab_web_http_port: 80
 lab_loki_url: http://10.77.42.1:3100/loki/api/v1/push
 lab_loki_retention: 168h
+# Безопасные defaults для нового inventory. Host-переменные имеют приоритет над этим group_vars.
+# При включении Windows/reviewer флаг задают на ОБОИХ hosts, а не только в inventory all.vars.
 lab_reviewer_enabled: false
 lab_demo_http_enabled: false
 lab_access_rollback_seconds: 900
+# lookup("env", "HOME") и lookup("file", ...) выполняются на контроллере.
+# Здесь только путь к локальному secret store вне Git; содержимое передают vars_files нужных plays.
 lab_controller_secret_file: '{{ lookup("env", "HOME") }}/.local/share/ozzylogik/secrets.yml'
+# Читается только public key: приватный SSH key выбирается отдельно в inventory.
 lab_admin_public_key_file: '{{ lookup("env", "HOME") }}/.ssh/ozzylogik-lab.pub'
 lab_admin_public_key: '{{ lookup("ansible.builtin.file", lab_admin_public_key_file) }}'

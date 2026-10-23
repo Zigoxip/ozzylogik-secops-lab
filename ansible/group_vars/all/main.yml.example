@@ -1,6 +1,9 @@
 # Draft only. Actual values and compatible pinned versions must be approved.
+# Учебный образец: суффикс .example не делает файл автоматически загружаемым group_vars.
+# Действующий main.yml содержит общие параметры; локальные адреса задаются в исключённом inventory.
 lab_admin_user: labadmin
 lab_vpn_interface: wg0
+# VPN-подсеть выбирают после проверки маршрутов; placeholders не являются рабочими значениями.
 lab_vpn_cidr: __CHOOSE_AFTER_ROUTE_AUDIT__
 lab_admin_wg_ip: __ADMIN_WG_IP__
 lab_web_wg_ip: __UBU1_WG_IP__
@@ -8,3 +11,4 @@ lab_hub_wg_ip: __UBU2_WG_IP__
 lab_wireguard_port: 51820
 lab_loki_retention: 168h
 # No passwords, tokens or private keys in this file.
+# Секреты передаются из защищённого файла на контроллере, а не добавляются в этот пример.

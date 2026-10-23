@@ -1,8 +1,13 @@
 # Verified 2026-10-23: control Python 3.12-3.14, managed Python 3.9-3.14.
+# Python-зависимости управляющего WSL: устанавливать в отдельный venv, не в system Python.
+# Это не список пакетов гостевых Ubuntu: ими управляют prepare и роли Ansible.
+# Закреплены ansible-core и его прямые/транзитивные зависимости, а не только верхний пакет.
 ansible-core==2.21.5
+# Библиотеки криптографии нужны контроллеру; эти строки не содержат ключей или credentials.
 cffi==2.1.1
 cryptography==50.0.2
 Jinja2==3.1.6
+# Jinja2/MarkupSafe обрабатывают шаблоны; PyYAML читает YAML, resolvelib разрешает зависимости.
 MarkupSafe==3.0.4
 packaging==26.3
 pycparser==3.12

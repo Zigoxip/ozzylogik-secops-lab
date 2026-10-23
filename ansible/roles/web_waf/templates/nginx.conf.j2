@@ -1,6 +1,8 @@
 # Managed by Ansible. This complete template intentionally does not include conf.d.
 # Only this static server is enabled; generated proxy/TLS/metrics servers are unused.
+{# Шаблон создаёт полный nginx.conf: загружаем модуль ModSecurity, конфиги conf.d автоматически не включаем. #}
 load_module modules/ngx_http_modsecurity_module.so;
+{# Master стартует с нужными правами, а обработкой запросов занимаются workers пользователя nginx. #}
 user nginx;
 worker_processes 1;
 pid /tmp/nginx.pid;
@@ -19,6 +21,7 @@ http {
     client_max_body_size 1m;
 
     # The socket peer is authoritative. No real_ip_header/set_real_ip_from/XFF trust.
+{# JSON access содержит реальный адрес TCP-клиента; escape=json экранирует строки. $uri не включает query string. #}
     log_format lab_json escape=json
         '{"time":"$time_iso8601","client_ip":"$remote_addr",'
         '"method":"$request_method","uri":"$uri","status":$status,'
@@ -26,17 +29,21 @@ http {
         '"request_id":"$request_id","correlation_id":"$http_x_lab_correlation_id"}';
     access_log {{ lab_web_log_dir }}/access.jsonl lab_json;
 
+{# Модуль включён явно; setup.conf из закреплённого образа подключает конфигурацию движка и правила CRS. #}
     modsecurity on;
     modsecurity_rules_file /etc/modsecurity.d/setup.conf;
+{# Общий ID связывает запись Nginx с audit-транзакцией; correlation_id дополнительно передаёт тестовый клиент. #}
     modsecurity_transaction_id "$request_id";
 
     server {
+{# {{ ... }} подставляет переменные Ansible. Доступ к listener разрешает отдельная роль firewall, не Nginx. #}
         listen {{ lab_web_bind_address }}:{{ lab_web_http_port }} default_server;
         server_name _;
         root /srv/ozzylogik/site;
         index index.html;
         add_header X-Lab-Request-ID $request_id always;
         add_header X-Content-Type-Options nosniff always;
+{# Nginx отдаёт существующие статические файлы; для отсутствующего пути возвращает 404. #}
         location / {
             try_files $uri $uri/ =404;
         }

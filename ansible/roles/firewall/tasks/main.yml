@@ -1,16 +1,23 @@
 ---
+# Вход роли: фаза определяет, применять правила или только завершить transaction.
 - name: Require an explicit firewall phase
   ansible.builtin.assert:
     that:
+      # lab_phase задаёт вызывающий playbook; неизвестное значение останавливает роль.
       - lab_phase in ['bootstrap', 'secured', 'commit']
+      # groups — группы inventory, inventory_hostname — имя текущей VM (ubu1/ubu2).
+      # != между двумя проверками требует вхождения ровно в одну из двух групп.
       - (inventory_hostname in groups.get('monitoring', [])) != (inventory_hostname in groups.get('web', []))
     fail_msg: Set a phase and place each guest in exactly one of web/monitoring.
 
+# import_tasks читает соседний список задач, when ограничивает его выполнение.
 - name: Apply the phase-specific guest firewall
   ansible.builtin.import_tasks: apply.yml
   when: lab_phase in ['bootstrap', 'secured']
+  # Тег — метка для выбора задач при запуске; он сам не задаёт сетевых правил.
   tags: [guest_firewall]
 
+# Commit не загружает новый ruleset: он снимает уже проверенную страховку доступа.
 - name: Commit only after independent acceptance checks
   ansible.builtin.import_tasks: commit.yml
   when: lab_phase == 'commit'

@@ -1,20 +1,24 @@
 # Managed from externally supplied secrets. Never enable SaveConfig.
 # LocalPublicKey = {{ lab_wg_hub_public_key if inventory_hostname in groups.get('monitoring', []) else lab_wg_web_public_key }}
+{# Interface описывает локальный гостевой интерфейс; private key берётся из внешних vars. #}
 [Interface]
 Address = {{ lab_hub_wg_ip if inventory_hostname in groups.get('monitoring', []) else lab_web_wg_ip }}/{{ lab_vpn_prefixlen }}
 ListenPort = {{ lab_wireguard_port }}
 PrivateKey = {{ lab_wg_hub_private_key if inventory_hostname in groups.get('monitoring', []) else lab_wg_web_private_key }}
 MTU = {{ lab_wireguard_mtu }}
 
+{# Один шаблон создаёт hub-конфиг для monitoring и peer-конфиг для web. #}
 {% if inventory_hostname in groups.get('monitoring', []) %}
 [Peer]
 PublicKey = {{ lab_wg_web_public_key }}
+{# AllowedIPs выбирает peer для отправки и ограничивает допустимый source после расшифровки. #}
 AllowedIPs = {{ lab_web_wg_ip }}/32
 
 [Peer]
 PublicKey = {{ lab_wg_admin_public_key }}
 AllowedIPs = {{ lab_admin_wg_ip }}/32
 
+{# Reviewer добавляется отдельным ключом и адресом, не заменяя административный peer. #}
 {% if lab_reviewer_enabled | bool %}
 [Peer]
 PublicKey = {{ lab_wg_reviewer_public_key }}
@@ -25,6 +29,7 @@ AllowedIPs = {{ lab_reviewer_wg_ip }}/32
 PublicKey = {{ lab_wg_hub_public_key }}
 AllowedIPs = {{ lab_hub_wg_ip }}/32, {{ lab_admin_wg_ip }}/32{% if lab_reviewer_enabled | bool %}, {{ lab_reviewer_wg_ip }}/32{% endif %}
 
+{# Web знает LAN endpoint hub; hub узнаёт endpoint клиентов из аутентифицированных пакетов. #}
 Endpoint = {{ lab_hub_lan_ip }}:{{ lab_wireguard_port }}
 PersistentKeepalive = {{ lab_wireguard_keepalive }}
 {% endif %}

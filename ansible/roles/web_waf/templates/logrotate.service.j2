@@ -1,7 +1,9 @@
+{# systemd unit описывает разовое действие на VM; запускается отдельным timer, не работает постоянно. #}
 [Unit]
 Description=Rotate OZZYLOGIK WAF host logs and reopen Nginx/ModSecurity files
 After=docker.service
 [Service]
+{# oneshot завершается после выполнения logrotate; state-файл хранит даты предыдущих ротаций между запусками. #}
 Type=oneshot
 ExecStart=/usr/sbin/logrotate --state /var/lib/ozzylogik/waf-logrotate.status {{ lab_web_config_dir }}/logrotate.conf
 PrivateTmp=true

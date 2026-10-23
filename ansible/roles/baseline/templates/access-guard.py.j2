@@ -11,11 +11,13 @@ import sys
 import tempfile
 
 os.umask(0o077)
+{# Jinja-комментарии не попадут в Python-файл: учебные пояснения не меняют его checksum. #}
 ROOT = Path('/var/lib/ozzylogik/access-rollback')
 PENDING = ROOT / 'pending'
 TIMER = 'ozzylogik-access-rollback.timer'
 WG = 'wg-quick@{{ lab_vpn_interface }}.service'
 FW = 'ozzylogik-firewall.service'
+{# Страховка сохраняет только этот список access-файлов, не весь диск или состояние VM. #}
 FILES = [
     '/etc/ssh/sshd_config.d/00-ozzylogik.conf',
     '/etc/wireguard/{{ lab_vpn_interface }}.conf',
@@ -49,6 +51,7 @@ def erase_pending():
         shutil.rmtree(PENDING)
 
 
+{# Первый arm создаёт снимок; при pending проверяет таймер и сохраняет прежний срок. #}
 def arm():
     if PENDING.exists():
         substate = run(['systemctl', 'show', TIMER, '-p', 'SubState', '--value']).stdout.strip()
@@ -58,6 +61,7 @@ def arm():
         return
     staging = Path(tempfile.mkdtemp(prefix='new-', dir=ROOT))
     try:
+{# Запоминаем файлы, свою nft-таблицу, forwarding и active/enabled двух служб. #}
         state = {
             'armed_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
             'files': {}, 'services': {name: service_state(name) for name in [WG, FW]},
@@ -79,6 +83,7 @@ def arm():
         if state['table_exists']:
             (staging / 'table.nft').write_text(old_table.stdout)
         (staging / 'state.json').write_text(json.dumps(state))
+{# Готовый снимок становится pending до запуска таймера, чтобы откат видел полное состояние. #}
         staging.rename(PENDING)
         run(['systemctl', 'reset-failed', 'ozzylogik-access-rollback.service'], False)
         run(['systemctl', 'enable', TIMER])
@@ -97,6 +102,7 @@ def restore_service(name, saved):
         run(['systemctl', 'start', name])
 
 
+{# Возвращаем сохранённое состояние; пользователей, пакеты и внешнюю сеть не откатываем. #}
 def rollback():
     if not PENDING.exists():
         print('unchanged')
@@ -127,6 +133,7 @@ def rollback():
     run(['systemctl', 'daemon-reload'])
     for name in [FW, WG]:
         restore_service(name, state['services'][name])
+{# SSH активируем лишь после проверки; при ошибке snapshot остаётся для recovery. #}
     run(['/usr/sbin/sshd', '-t'])
     run(['systemctl', 'reload-or-restart', 'ssh.service'])
     run(['systemctl', 'disable', '--now', TIMER])
@@ -134,6 +141,7 @@ def rollback():
     print('rolled-back')
 
 
+{# Commit снимает страховку, но сам не проверяет доступность и не ужесточает SSH/firewall. #}
 def commit():
     if not PENDING.exists():
         print('unchanged')
@@ -148,6 +156,7 @@ def main():
         raise RuntimeError('Use as root: ozzylogik-access-guard arm|commit|rollback|status')
     ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
     with (ROOT / 'lock').open('a') as lock:
+{# Lock не даёт двум вызовам helper одновременно менять один pending-снимок. #}
         fcntl.flock(lock, fcntl.LOCK_EX)
         if sys.argv[1] == 'status':
             print('pending' if PENDING.exists() else 'clear')

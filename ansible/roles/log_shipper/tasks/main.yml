@@ -1,4 +1,6 @@
 ---
+# Alloy устанавливается обычной службой Linux, отдельно от WAF-контейнера.
+# assert проверяет входные переменные до установки и не разрешает случайный внешний Loki.
 - name: Validate the pinned native collector inputs
   ansible.builtin.assert:
     that:
@@ -33,6 +35,8 @@
     state: present
 
 - name: Create the unprivileged collector service account
+  # Системный пользователь не получает shell-вход и читает логи через общую группу.
+  # append сохраняет другие членства; их изменение требует restart для новых прав процесса.
   ansible.builtin.user:
     name: "{{ lab_alloy_user }}"
     group: "{{ lab_alloy_group }}"
@@ -58,6 +62,8 @@
     - "{{ lab_alloy_config_dir }}"
 
 - name: Create persistent collector positions and WAL storage
+  # Этот каталог нельзя очищать при обычном повторе: positions хранят место чтения,
+  # WAL — локальные данные отправки. Ни то ни другое не заменяет проверку доставки в Loki.
   ansible.builtin.file:
     path: "{{ lab_alloy_state_dir }}"
     state: directory
@@ -66,6 +72,7 @@
     mode: "0750"
 
 - name: Download the checksum-verified fixed Alloy release
+  # get_url загружает на управляемую VM; checksum отвергает файл с другими байтами.
   ansible.builtin.get_url:
     url: "{{ lab_alloy_archive_url }}"
     dest: "/var/cache/ozzylogik/alloy-{{ lab_alloy_version }}-linux-amd64.zip"
@@ -75,6 +82,7 @@
     mode: "0644"
 
 - name: Extract the fixed Alloy release
+  # remote_src означает, что архив уже НА VM; creates предотвращает лишнюю распаковку.
   ansible.builtin.unarchive:
     src: "/var/cache/ozzylogik/alloy-{{ lab_alloy_version }}-linux-amd64.zip"
     dest: "/opt/ozzylogik/alloy/{{ lab_alloy_version }}"
@@ -92,6 +100,8 @@
   notify: Restart the log collector
 
 - name: Install and validate the collector configuration
+  # src ищется в templates/ роли на контроллере, dest создаётся на VM после подстановки vars.
+  # validate проверяет временный файл тем же бинарником; права/доставка требуют runtime-теста.
   ansible.builtin.template:
     src: config.alloy.j2
     dest: "{{ lab_alloy_config_dir }}/config.alloy"
@@ -102,6 +112,8 @@
   notify: Restart the log collector
 
 - name: Install the native collector service
+  # Unit задаёт пользователя, постоянный state path и ограничения процесса.
+  # Изменение бинарника/config/unit уведомляет общий handler перезапуска, а не три restart.
   ansible.builtin.template:
     src: alloy.service.j2
     dest: /etc/systemd/system/ozzylogik-alloy.service
@@ -111,6 +123,7 @@
   notify: Restart the log collector
 
 - name: Enable the persistent native log collector
+  # enabled включает автозапуск; state: started сохраняет уже работающую службу без restart.
   ansible.builtin.systemd_service:
     name: ozzylogik-alloy
     daemon_reload: true

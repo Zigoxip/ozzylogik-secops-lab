@@ -1,12 +1,15 @@
 ---
+# Обновление только двух новых клонов через bootstrap inventory, до постановки rollback timer.
 - import_playbook: preflight.yml
 
 - name: Update only the new guests and install access tools before rollback is armed
   hosts: all
   become: true
+  # Факты читаются с гостей; пакетные операции ниже выполняются там через sudo.
   gather_facts: true
   tasks:
     - name: Apply Ubuntu security and package updates inside the new clones
+      # Это реальное обновление гостевых пакетов, а не обновление Proxmox или Python контроллера.
       ansible.builtin.apt:
         update_cache: true
         upgrade: dist
@@ -29,8 +32,10 @@
           - tcpdump
           - qemu-guest-agent
         state: present
+        # Не запускаем новые службы автоматически посреди установки; конфигурация и старт идут в ролях.
         policy_rc_d: 101
 
+    # Docker candidate читаем только на web VM и фиксируем фактическую версию вместо выдуманного пина.
     - name: Read the real Docker package candidate
       ansible.builtin.command: apt-cache policy docker.io
       changed_when: false
@@ -43,6 +48,8 @@
       when: inventory_hostname in groups['web']
 
     - name: Save the deployment package fact to the controller
+      # delegate_to переносит запись на контроллер; become:false не применяет гостевой sudo локально.
+      # .local исключён из Git. Сохранённый факт затем нужен локальным параметрам воспроизведения.
       ansible.builtin.copy:
         content: '{{ {"lab_docker_package_version": lab_docker_package_version} | to_nice_yaml }}'
         dest: '{{ playbook_dir }}/../.local/docker-package-pin.yml'
@@ -52,11 +59,13 @@
       when: inventory_hostname in groups['web']
 
     - name: Read actual installed package versions for the local manifest
+      # dpkg-query только читает состояние; changed_when:false не выдаёт чтение за изменение VM.
       ansible.builtin.command: dpkg-query -W
       changed_when: false
       register: lab_package_manifest
 
     - name: Save only the new guest package manifest locally
+      # Manifest содержит версии пакетов новых гостей; локальный файл закрыт правами 0600.
       ansible.builtin.copy:
         content: "{{ lab_package_manifest.stdout }}\n"
         dest: '{{ playbook_dir }}/../.local/{{ inventory_hostname }}-packages-after-prepare.txt'

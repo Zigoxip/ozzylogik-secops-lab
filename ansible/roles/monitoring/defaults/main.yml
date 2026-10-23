@@ -1,9 +1,12 @@
 ---
+# Настройки роли по умолчанию; URL/SHA закрепляют конкретные артефакты, а не latest.
 lab_loki_version: '3.7.9'
 lab_loki_archive_url: 'https://github.com/grafana/loki/releases/download/v3.7.9/loki-linux-amd64.zip'
 lab_loki_archive_checksum: 'sha256:17a5fae28ce733b3560c27c76620920b169bd2aea9473947b733b511f92e81dd'
+# Срок хранения семь суток задаёт политику удаления, но не жёсткую квоту диска.
 lab_loki_retention: '168h'
 lab_grafana_version: '13.2.4'
 lab_grafana_deb_url: 'https://dl.grafana.com/grafana/release/13.2.4/grafana_13.2.4_38252365904_linux_amd64.deb'
 lab_grafana_deb_checksum: 'sha256:f32ba4e166e35a376f39cbeb8dd47c57f7bf608b09339cb41adf6d39082af3c5'
+# Здесь только имя первоначального администратора; пароль передаётся отдельно вне Git.
 lab_grafana_admin_user: labadmin

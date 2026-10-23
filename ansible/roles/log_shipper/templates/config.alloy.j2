@@ -4,9 +4,11 @@ logging {
   format = "logfmt"
 }
 
+{# Alloy-конфигурация описывает поток: найти активные файлы → читать строки → отправить Loki. Это не YAML Ansible. #}
 local.file_match "waf_access" {
   path_targets = [{
     "__path__"         = "{{ lab_web_log_dir }}/access.jsonl",
+{# Устойчивые labels помогают фильтровать потоки. Уникальные request_id остаются внутри JSON, а не в labels. #}
     "job"              = "ozzylogik",
     "instance"         = "{{ lab_log_instance }}",
     "service_name"     = "nginx",
@@ -26,9 +28,11 @@ local.file_match "waf_audit" {
   sync_period = "5s"
 }
 
+{# source.file сохраняет позиции в state directory службы; имена компонентов не стоит менять без плана миграции. #}
 loki.source.file "waf_access" {
   targets       = local.file_match.waf_access.targets
   forward_to    = [loki.write.ubu2.receiver]
+{# При отсутствии сохранённой позиции читаем файл с начала; повторная работа использует positions, а не постоянно перечитывает всё. #}
   tail_from_end = false
 }
 
@@ -38,15 +42,18 @@ loki.source.file "waf_audit" {
   tail_from_end = false
 }
 
+{# Передаём исходные строки двум потокам в один Loki по WG; redirects/proxy отключены, чтобы путь оставался явным. #}
 loki.write "ubu2" {
   endpoint {
     url                    = "{{ lab_loki_url }}"
     follow_redirects       = false
     proxy_from_environment = false
+{# В закреплённой версии ноль означает неограниченные retries; это не гарантирует доставку при остановке самого Alloy. #}
     max_backoff_retries    = 0
   }
   // In pinned Alloy 1.21 this feature requires the explicit experimental flag.
   // Persistent positions alone do not guarantee delivery of an in-memory batch.
+{# WAL хранит локальное состояние отправки, но экспериментален и не даёт гарантии потерь=0 при совмещённом отказе. #}
   wal {
     enabled         = true
     max_segment_age = "{{ lab_alloy_wal_max_segment_age }}"

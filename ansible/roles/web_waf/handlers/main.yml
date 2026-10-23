@@ -1,4 +1,6 @@
 ---
+# Handler выполняется после notify от ИЗМЕНИВШЕЙСЯ задачи; несколько notify объединяются.
+# В tasks/main.yml flush_handlers запускает ожидающие обработчики до проверки готовности.
 - name: Restart dedicated Docker daemon
   ansible.builtin.systemd_service:
     name: docker
@@ -6,6 +8,8 @@
   when: not ansible_check_mode
 
 - name: Restart the WAF container
+  # Здесь нужен только restart уже описанного контейнера: неполная спецификация могла бы
+  # пересоздать его с другими сетью/mounts. changed_when отмечает реальный перезапуск.
   # A partial docker_container spec can reconcile image defaults and recreate it.
   # Restart the fully declared container without changing its network or mounts.
   ansible.builtin.command:
@@ -14,6 +18,8 @@
   when: not ansible_check_mode
 
 - name: Reload WAF log rotation units
+  # daemon_reload перечитывает unit-файлы systemd; state: started не перезапускает
+  # уже работающий timer без необходимости.
   ansible.builtin.systemd_service:
     name: ozzylogik-waf-logrotate.timer
     daemon_reload: true

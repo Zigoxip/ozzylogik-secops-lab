@@ -1,13 +1,17 @@
+{# Вспомогательный скрипт исполняется postrotate на VM; комментарии Jinja не попадут в готовый shell-файл. #}
 #!/bin/sh
 set -eu
 # In the pinned ModSecurity build HUP keeps the serial audit descriptor on the
 # rotated inode. A short container restart closes it and opens the active file.
+{# raw сохраняет Go-шаблон Docker {{.State.Running}}; иначе Jinja попыталась бы прочитать его как свои переменные. #}
 running=$(/usr/bin/docker --host=unix:///var/run/docker.sock inspect --format {% raw %}'{{.State.Running}}'{% endraw %} {{ lab_web_container_name }})
 if [ "$running" != true ]; then
     exit 0
 fi
 /usr/bin/docker --host=unix:///var/run/docker.sock exec {{ lab_web_container_name }} nginx -t >/dev/null
+{# HUP оставлял audit descriptor в старом архиве: restart закрывает его, но кратко прерывает HTTP. #}
 /usr/bin/docker --host=unix:///var/run/docker.sock restart {{ lab_web_container_name }} >/dev/null
+{# После restart ждём настоящий HTTP 200; успешная команда Docker сама по себе ещё не означает готовый веб. #}
 /usr/bin/python3 - <<'PY'
 import time
 import urllib.request

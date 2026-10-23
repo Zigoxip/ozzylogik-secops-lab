@@ -1,3 +1,11 @@
+# Этот YAML читает Grafana: это её настройки, а не список задач Ansible.
+# Роль monitoring копирует файл в /etc/grafana/provisioning/dashboards на ubu2.
+# Provider = источник дашбордов. type: file означает чтение JSON с диска VM.
+# folder/folderUid выбирают папку в интерфейсе, options.path — каталог JSON на сервере.
+# allowUiUpdates определяет, можно ли сохранять изменения через интерфейс Grafana.
+# Сохранение через UI меняет базу Grafana; исходный JSON в Git автоматически не обновится.
+# disableDeletion сохраняет dashboard в базе при исчезновении файла из источника.
+# updateIntervalSeconds задаёт период поиска изменений файлов, не обновление данных панелей.
 apiVersion: 1
 providers:
   - name: ozzylogik

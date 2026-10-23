@@ -1,11 +1,14 @@
+{# Loki запускается обычной службой Linux на ubu2; systemd включает его при загрузке и следит за процессом. #}
 [Unit]
 Description=Loki log storage for OZZYLOGIK lab
 After=network-online.target
 Wants=network-online.target
 
 [Service]
+{# Служба не работает root: её данные принадлежат отдельному системному пользователю loki. #}
 User=loki
 Group=loki
+{# Этот бинарник установлен из checksum-проверенного архива; конфигурацию создаёт соседний Jinja-шаблон роли. #}
 ExecStart=/usr/local/bin/loki -config.file=/etc/loki/loki.yml
 Restart=on-failure
 RestartSec=3
@@ -14,6 +17,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+{# ProtectSystem=strict закрывает остальную ФС для записи; данные Loki сохраняются в явно разрешённом каталоге. #}
 ReadWritePaths=/var/lib/loki
 LimitNOFILE=65536
 MemoryMax=1536M

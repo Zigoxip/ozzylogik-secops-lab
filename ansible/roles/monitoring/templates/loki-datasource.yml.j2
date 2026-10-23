@@ -1,8 +1,11 @@
+{# Provisioning описывает datasource кодом: Grafana создаёт подключение к Loki при запуске, без ручного мастера UI. #}
 apiVersion: 1
 datasources:
   - name: Loki
+{# Стабильный UID используется JSON дашборда: переименование только отображаемого name не меняет эту связь. #}
     uid: ozzylogik-loki
     type: loki
+{# proxy означает запрос Grafana-server→Loki, не браузер→Loki; оба процесса на ubu2, поэтому URL loopback. #}
     access: proxy
     url: http://127.0.0.1:3100
     isDefault: true

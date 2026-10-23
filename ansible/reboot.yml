@@ -1,11 +1,16 @@
 ---
+# Отдельный play с отдельным разрешением: не включён неявно в site/secure.
 - name: Verify the approved guests after a sequential reboot
   hosts: all
+  # sorted + serial:1 задают ubu1, затем ubu2; следующий гость ждёт завершения задач предыдущего.
   order: sorted
   serial: 1
   become: true
+  # До reboot достаточно inventory и явных проверок; полный сбор фактов не нужен.
   gather_facts: false
   pre_tasks:
+    # lab_reboot_approved подтверждает явное разрешение пользователя, а не выдаёт его автоматически.
+    # Проверяются также оба ожидаемых имени, labadmin и подключение к правильному WG-IP.
     - name: Require explicit reboot approval and the administrative VPN path
       ansible.builtin.assert:
         that:
@@ -15,6 +20,7 @@
           - ansible_host == (lab_hub_wg_ip if inventory_hostname in groups['monitoring'] else lab_web_wg_ip)
         quiet: true
     - name: Inspect the access transaction before rebooting
+      # Это реальная read-only проба guard; незавершённая access-транзакция блокирует reboot.
       ansible.builtin.command:
         argv: [/usr/local/sbin/ozzylogik-access-guard, status]
       register: lab_reboot_guard
@@ -25,17 +31,20 @@
         quiet: true
   tasks:
     - name: Reboot one approved guest and wait for a fresh VPN connection
+      # Модуль ждёт новый boot и рабочее SSH-соединение; последующие задачи проверяют службы и HTTP.
       ansible.builtin.reboot:
         connect_timeout: 5
         reboot_timeout: 300
         post_reboot_delay: 10
         test_command: id -u
     - name: Require persistent guest services after reboot
+      # Общие службы нужны обеим VM; web/monitoring проверки ниже ограничены своими группами.
       ansible.builtin.command:
         argv: [systemctl, is-active, '{{ item }}']
       loop: [qemu-guest-agent, ssh, ozzylogik-firewall, wg-quick@wg0]
       changed_when: false
     - name: Wait for the web health resource after reboot
+      # URI вызывается внутри гостя на loopback, не из браузера и не через внешний WAN.
       ansible.builtin.uri:
         url: http://127.0.0.1:80/healthz
         status_code: 200

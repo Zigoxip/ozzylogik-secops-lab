@@ -1,4 +1,14 @@
 ---
+# Этот список задач подключается из tasks/main.yml роли monitoring через import_tasks.
+# Он выполняется на ubu2: dest ниже — путь на VM, а не в рабочей папке Ansible.
+# copy берёт готовый src из каталога files этой роли; переменные в JSON не подставляет.
+# Provider объясняет Grafana, где искать dashboard JSON и можно ли сохранять UI-правки.
+# Конкретные разрешения задаются в files/ozzylogik-dashboards.yml, а не в этой задаче.
+# owner/group/mode задают владельца и права файлов Linux; 0640 = запись root, чтение группе.
+# notify ставит Restart Grafana в очередь только при изменении соответствующего файла.
+# flush_handlers немедленно выполняет уже поставленные в очередь обработчики.
+# validate проверяет JSON до замены файла; uri в конце ожидает готовность самой Grafana.
+# Проверка health не выполняет запросы всех панелей и не проверяет VPN со стороны клиента.
 - name: Prepare the provisioned dashboard directory
   ansible.builtin.file:
     path: /var/lib/grafana/dashboards/ozzylogik

@@ -1,8 +1,13 @@
 ---
+# Коллекции устанавливаются на контроллере через ansible-galaxy, не внутрь гостевых VM.
+# Точные версии закрепляют API модулей; обновление требует повторной проверки playbooks.
 collections:
+  # Модули POSIX, в том числе управление authorized_keys обычного администратора.
   - name: ansible.posix
     version: '2.1.0'
+  # Модули описания/проверки Docker-контейнера WAF на ubu1.
   - name: community.docker
     version: '5.4.0'
   - name: community.library_inventory_filtering_v1
     version: '1.1.5'
+# Дополнительная inventory-коллекция также входит в закреплённый набор контроллера.
